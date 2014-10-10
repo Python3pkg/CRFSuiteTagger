@@ -78,7 +78,6 @@ class CRFSTagger:
 
         fc = FeatureContainer(d)
         fc.extract_features(self.ft_tmpl)
-
         return fc.gsequences
 
     @staticmethod
@@ -175,6 +174,5 @@ if __name__ == '__main__':
     print '%s Training complete.' % time.asctime()
     print '%s Testing...' % time.asctime()
     r, d = c.test()
-    print d[:100]
     print r
     print time.asctime()

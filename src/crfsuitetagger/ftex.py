@@ -56,6 +56,8 @@ class FeatureContainer:
         dt = 'a60,{}'.format(','.join('a30' for _ in range(nft)))
         self.fts = np.zeros(rc, dtype=dt)
 
+
+
         # sequence start, end indices
         start, end = 0, 0
 
@@ -65,7 +67,7 @@ class FeatureContainer:
         sc = 0
 
         # extracting features from sequences
-        while 0 < start < len(self.data):
+        while 0 <= start < len(self.data):
 
             # index of the end of a sequence is recorded at the beginning
             end = self.data[start]['eos']
@@ -73,17 +75,17 @@ class FeatureContainer:
             # slicing a sequence
             seq = self.data[start:end]
 
-            # moving the start index
-            start = end
-
             # extracting the features
             for i in range(len(seq)):
-                self.fts[i] = tuple(self.ftt.make_fts(seq, i))
+                self.fts[start + i] = tuple(self.ftt.make_fts(seq, i))
 
             sc += 1
 
             if sc % 1000 == 0:
                 print '%s' % sc
+
+            # moving the start index
+            start = end
 
     @property
     def sequences(self):
