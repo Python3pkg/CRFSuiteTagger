@@ -1,0 +1,37 @@
+# This file is part of CRFSuiteTagger.
+#
+# CRFSuiteTagger is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# CRFSuiteTagger is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with CRFSuiteTagger.  If not, see <http://www.gnu.org/licenses/>.
+__author__ = 'Aleksandar Savkov'
+
+import sys
+import csv
+
+from os.path import expanduser
+
+csv.field_size_limit(sys.maxsize)
+
+
+def read_cls(cp):
+    r = csv.reader(open(expanduser(cp), 'r'), delimiter='\t')
+    return {x[0]: x[1] for x in r}
+
+
+def read_emb(ep):
+    r = csv.reader(open(expanduser(ep), 'r'), delimiter=' ')
+    return {x[0]: x[1:] for x in r}
+
+
+def read_brown(bp):
+    r = csv.reader(open(expanduser(bp), 'r'), delimiter='\t')
+    return {x[1]: x[0] for x in r}
