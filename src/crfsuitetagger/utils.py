@@ -116,7 +116,10 @@ def export(data, fp, cols=None, ts='\t'):
     :type cols: tuple or list
     :param ts:
     """
+    col_templ = {'pos': ['form', 'postag', 'guesstag'],
+                 'chunk': ['form', 'postag', 'chunktag', 'guesstag']}
     c = list(data.dtype.names) if cols is None else cols
+    c = c if type(c) is list else col_templ[c]
     with open(fp, 'w') as fh:
         d = data[c]
         for i in xrange(len(data)):
