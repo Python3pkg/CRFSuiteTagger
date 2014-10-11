@@ -17,19 +17,98 @@ __author__ = 'Aleksandar Savkov'
 import os
 import sys
 import time
+import StringIO
 import traceback
 
 from os.path import join
-from utils import AccuracyResults
+from utils import export
 from iterpipes import check_call, cmd
 from utils import parse_conll_eval_table
 from subprocess import CalledProcessError
 
 
+class AccuracyResults(dict):
+    """POS tagger accuracy results container class.
+    """
+
+    _total_name = 'Total'
+
+    @property
+    def total(self):
+        """Name of total accuracy key in the results dictionary.
+
+
+        :return: total results key
+        :rtype: str
+        """
+        return self._total_name
+
+    @total.setter
+    def total(self, name):
+        self._total_name = name
+
+    def export_to_file(self, fp, *args, **kwargs):
+        """Export results to a file.
+
+        :param fp: file path
+        :type fp: str
+        """
+        with open(fp, 'w') as f:
+            f.write('-----------------------\n')
+            for k in kwargs.keys():
+                if type(kwargs[k]) is not list:
+                    kwargs[k] = [kwargs[k]]
+                f.write('%s: %s' % (k, ' '.join([str(x) for x in kwargs[k]])))
+                f.write('\n-----------------------\n')
+            for i in self.items():
+                if i[0] == 'Total':
+                    continue
+                k = i[0]
+                n_cor, n_all, acc = i[1]
+                f.write('%s: %s (%s/%s)\n' % (k, acc, n_cor, n_all))
+            f.write('-----------------------\n')
+            f.write('%s: %s (%s/%s)\n' % (self.total,
+                                          self[self.total][2],
+                                          self[self.total][0],
+                                          self[self.total][1]))
+            f.write('-----------------------\n')
+
+    def __setitem__(self, key, value):
+        tuple_val = value if type(value) is tuple else (0, 0, value)
+        super(AccuracyResults, self).__setitem__(key, tuple_val)
+
+    def __str__(self):
+        rf = StringIO.StringIO()
+        rf.write('-----------------------\n')
+        for i in self.items():
+            if i[0] == 'Total':
+                continue
+            k = i[0]
+            n_cor, n_all, acc = i[1]
+            rf.write('%s: %s (%s/%s)\n' % (k, acc, n_cor, n_all))
+        rf.write('-----------------------\n')
+        rf.write('%s: %s (%s/%s)\n' % (self.total,
+                                       self[self.total][2],
+                                       self[self.total][0],
+                                       self[self.total][1]))
+        rf.write('-----------------------\n')
+        return rf.getvalue()
+
+    def __repr__(self):
+        return self.__str__()
+
+
 def conll(data):
+    """Evaluates chunking f1-score provided with data with the following fields:
+    form, postag, chunktag, guesstag
 
+    Currently uses the CoNLL-2000 evaluation script to make the estimate.
+
+    :param data: np.array
+    :return: f1-score estimate
+    :rtype: AccuracyResults
+    """
     # TODO: reimplement the conll testing script in Python
-
     try:
         os.makedirs(join(os.getcwd(), 'tmp/'))
     except OSError:
@@ -42,7 +121,7 @@ def conll(data):
     fh_out = open(fp_res, 'w')
 
     print '%s exporting' % time.asctime()
-    data.export_to_file(fp_dp, ['form', 'postag', 'chunktag', 'guesstag'], ' ')
+    export(data, fp_dp, ['form', 'postag', 'chunktag', 'guesstag'], ' ')
 
     cwd = join(os.getcwd(), "prl/")
     c = cmd(
@@ -57,8 +136,7 @@ def conll(data):
 
     try:
         check_call(c)
-        results = parse_conll_eval_table(fp_res)
-        r.update(results)
+        r.update(parse_conll_eval_table(fp_res))
     except CalledProcessError:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         print "*** print_tb:"
@@ -78,4 +156,32 @@ def conll(data):
 
 
 def pos(data):
-    return data.accuracy
+    """Estimates POS tagging accuracy based on the `postag` and `guesstag`
+    fields in `data`.
+
+    :return: guess accuracy results by category
+    :rtype: AccuracyResults
+    """
+    cc = {}
+    ac = {}
+    for it in data:
+        if it['postag'] not in ac.keys():
+            ac[it['postag']] = 0.0
+            cc[it['postag']] = 0.0
+        if it['postag'] == it['guesstag']:
+            cc[it['postag']] += 1
+        ac[it['postag']] += 1
+
+    tcc = 0.0
+    tac = 0.0
+
+    results = AccuracyResults()
+
+    for t in ac.keys():
+        results[t] = (cc[t], ac[t], cc[t] / ac[t])
+        tcc += cc[t]
+        tac += ac[t]
+
+    results['Total'] = (tcc, tac, tcc / tac)
+
+    return results

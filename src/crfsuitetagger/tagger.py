@@ -15,13 +15,15 @@
 
 __author__ = 'Aleksandar Savkov'
 
-import pickle
+import time
 import eval
+import pickle
 import readers
+import numpy as np
 import ConfigParser
 
-from utils import parse_data, parse_ftvec_templ, SequenceData
-from ftex import FeatureContainer
+from ftex import parse_ftvec_templ
+from utils import parse_tsv, gsequences
 from pycrfsuite import Trainer, Tagger
 
 
@@ -69,16 +71,58 @@ class CRFSTagger:
     def load_data(self, cols=None):
         c = self.cfg.get('cols', cols)
         if self.cfg.has_key('train'):
-            self.train_data = parse_data(self.cfg['train'], cols=c, ts=self.ts)
+            self.train_data = parse_tsv(self.cfg['train'], cols=c, ts=self.ts)
 
         if self.cfg.has_key('test'):
-            self.test_data = parse_data(self.cfg['test'], cols=c, ts=self.ts)
+            self.test_data = parse_tsv(self.cfg['test'], cols=c, ts=self.ts)
 
     def extract_features(self, d):
 
-        fc = FeatureContainer(d)
-        fc.extract_features(self.ft_tmpl)
-        return fc.gsequences
+        # number of features
+        nft = len(self.ft_tmpl.vec)
+
+        # record count
+        rc = len(d)
+
+        # recarray data types (60 >= char string, [30 >= char string] * nft)
+        dt = 'a60,{}'.format(','.join('a30' for _ in range(nft)))
+
+        # constructing empty recarray
+        fts = np.zeros(rc, dtype=dt)
+
+        # sequence start and end indices
+        s, e = 0, 0
+
+        print '%s Processing sequences...' % time.asctime()
+
+        sc = 0
+
+        # extracting features from sequences
+        while 0 <= s < len(d):
+
+            # index of the end of a sequence is recorded at the beginning
+            e = d[s]['eos']
+
+            # slicing a sequence
+            seq = d[s:e]
+
+            # extracting the features
+            for i in range(len(seq)):
+                fts[s + i] = tuple(self.ft_tmpl.make_fts(seq, i))
+
+            # slicing the feature sequence
+            ft_seq = fts[s:e]
+
+            # moving the start index
+            s = e
+
+            sc += 1
+
+            if sc % 1000 == 0:
+                print '%s processed sequences' % sc
+
+            # yielding a feature sequence
+            yield ft_seq
 
     @staticmethod
     def get_labels(d, lc):
@@ -109,7 +153,7 @@ class CRFSTagger:
 
         # extract labels or use provided
         print '%s extracting labels' % time.asctime()
-        y = SequenceData(d).gsequences(lc) if ls is None else ls
+        y = gsequences(d, lc) if ls is None else ls
 
         trainer = Trainer(verbose=False)
 
@@ -156,7 +200,7 @@ class CRFSTagger:
         self.tag(d, tgr, lc)
 
         #evaluating
-        r = self.eval_func(SequenceData(d))
+        r = self.eval_func(d)
 
         return r, d
 
@@ -164,7 +208,6 @@ class CRFSTagger:
     _xfts = extract_features
 
 if __name__ == '__main__':
-    import time
     print '%s Starting process...' % time.asctime()
     c = CRFSTagger('cfg/crfstagger.cfg')
     # trd = parse_data('/Volumes/LocalDataHD/as714/Dropbox/playground/play_corpus_dir/train/tech.pos', ts='\t', cols='pos')

@@ -14,153 +14,19 @@
 # along with CRFSuiteTagger.  If not, see <http://www.gnu.org/licenses/>.
 __author__ = 'Aleksandar Savkov'
 
-import re
-import eval
-import StringIO
 import numpy as np
-
-from ftex import FeatureTemplate
-
-
-class AccuracyResults(dict):
-    """POS tagger accuracy results container class.
-    """
-
-    _total_name = 'Total'
-
-    @property
-    def total(self):
-        """Name of total accuracy key in the results dictionary.
-
-
-        :return: total results key
-        :rtype: str
-        """
-        return self._total_name
-
-    @total.setter
-    def total(self, name):
-        self._total_name = name
-
-    def export_to_file(self, fp, *args, **kwargs):
-        """Export results to a file.
-
-        :param fp: file path
-        :type fp: str
-        """
-        with open(fp, 'w') as f:
-            f.write('-----------------------\n')
-            for k in kwargs.keys():
-                if type(kwargs[k]) is not list:
-                    kwargs[k] = [kwargs[k]]
-                f.write('%s: %s' % (k, ' '.join([str(x) for x in kwargs[k]])))
-                f.write('\n-----------------------\n')
-            for i in self.items():
-                if i[0] == 'Total':
-                    continue
-                k = i[0]
-                n_cor, n_all, acc = i[1]
-                f.write('%s: %s (%s/%s)\n' % (k, acc, n_cor, n_all))
-            f.write('-----------------------\n')
-            f.write('%s: %s (%s/%s)\n' % (self.total,
-                                          self[self.total][2],
-                                          self[self.total][0],
-                                          self[self.total][1]))
-            f.write('-----------------------\n')
-
-    def __setitem__(self, key, value):
-        tuple_val = value if type(value) is tuple else (0, 0, value)
-        super(AccuracyResults, self).__setitem__(key, tuple_val)
-
-    def __str__(self):
-        rf = StringIO.StringIO()
-        rf.write('-----------------------\n')
-        for i in self.items():
-            if i[0] == 'Total':
-                continue
-            k = i[0]
-            n_cor, n_all, acc = i[1]
-            rf.write('%s: %s (%s/%s)\n' % (k, acc, n_cor, n_all))
-        rf.write('-----------------------\n')
-        rf.write('%s: %s (%s/%s)\n' % (self.total,
-                                       self[self.total][2],
-                                       self[self.total][0],
-                                       self[self.total][1]))
-        rf.write('-----------------------\n')
-        return rf.getvalue()
-
-    def __repr__(self):
-        return self.__str__()
-
-
-def parse_ftvec_templ(s, r):
-    ftt = FeatureTemplate()
-    fts_str = [x for x in s.strip().replace(' ', '').split(';')]
-    for ft in fts_str:
-
-        # empty featues (...; ;feature:params)
-        if ft.strip() == '':
-            continue
-
-        # no parameter features
-        if ':' not in ft:
-            ftt.add_feature(ft, (ft,))
-            continue
-        elif ft.count(':') == 1 and ft.endswith(':'):
-            ftt.add_feature(ft[:-1], (ft[:-1],))
-            continue
-
-        # function name & parameter values
-        fn, v = ft.split(':', 1)
-
-        # value matches
-        m = re.match('(?:\[([0-9:,-]+)\])?(.+)?', v)
-
-        # window range
-        fw = parse_range(m.group(1)) if m.group(1) else None
-
-        # function parameters
-        fp = ()
-
-        # adding resources if necessary
-        if fn in r.keys():
-            fp += tuple(r[fn])
-
-        # adding function parameters if specified
-        if m.group(2) is not None:
-            fp += tuple(x for x in m.group(2).split(',') if x)
-
-        # name, window, parameters
-        ftt.add_win_features(fn, fw, fp)
-
-    return ftt
-
-
-def parse_range(r):
-    """Parses a range in string representation adhering to the following format:
-    1:3,6,8:9 -> 1,2,3,6,8,9
-
-    :param r: range string
-    :type r: str
-    """
-    rng = []
-
-    # Range strings
-    rss = [x.strip() for x in r.split(',')]
-
-    for rs in rss:
-        if ':' in rs:
-            # Range start and end
-            s, e = (int(x.strip()) for x in rs.split(':'))
-            for i in range(s, e + 1):
-                rng.append(int(i))
-        else:
-            rng.append(int(rs))
-
-    return rng
 
 
 def parse_conll_eval_table(fp):
+    """Parses the LaTeX table output of the CoNLL-2000 evaluation script into a
+    dictionary with string keys and tuple values containing precision, recall,
+    and f1-score values at the respective positions.
+
+    :param fp: file path
+    :type fp: str
+    :return: results by category
+    :rtype: dict
+    """
     table = {}
 
     with open(fp, 'r') as tbl:
@@ -176,13 +42,37 @@ def parse_conll_eval_table(fp):
     return table
 
 
-def parse_data(fp, cols, ts='\t'):
+def parse_tsv(fp, cols, ts='\t'):
+    """Parses a file of TSV sequences separated by an empty line and produces
+    a numpy recarray. The `cols` parameter can use a predefined set of field
+    names or it can be user specific. The fields may be arbitrary in case new
+    features/extractor functions are defined, however, a convention should be
+    followed for the use of the POS tagging and chunking features included in
+    this library.
+
+    Example of a file with chunk data:
+
+    <form>  <postag>    <chunktag>  <guesstag>
+
+    :param fp: file path
+    :type fp: str
+    :param cols: column names
+    :type cols: str or tuple
+    :param ts: tab separator
+    :type ts: str
+    :return: parsed data
+    :rtype: np.array
+    """
+
     ct = {'pos': ('form', 'postag'), 'chunk': ('form', 'postag', 'chunktag')}
     c = ct[cols] if type(cols) is str else cols
+
     rc = count_records(fp)
     nc = len(c)
     dt = 'a60,{},int32'.format(','.join('a10' for _ in range(nc)))
+
     data = np.zeros(rc, dtype=dt)
+
     names = c + ('guesstag', 'eos')
     data.dtype.names = names
     with open(fp, 'r') as fh:
@@ -199,6 +89,13 @@ def parse_data(fp, cols, ts='\t'):
 
 
 def count_records(fp):
+    """Counts the number of empty lines in a file.
+
+    :param fp: file path
+    :type fp: str
+    :return: number of empty lines
+    :rtype: int
+    """
     c = 0
     with open(fp, 'r') as fh:
         for l in fh:
@@ -207,94 +104,52 @@ def count_records(fp):
     return c
 
 
-class SequenceData:
+def export(data, fp, cols=None, ts='\t'):
+    """ Exports recarray to a TSV sequence file, where sequences are divided by
+    empty lines.
 
-    def __init__(self, data):
-        """
+    :param data: data
+    :type data: np.array
+    :param fp: file path
+    :type fp: str
+    :param cols: column names
+    :type cols: tuple or list
+    :param ts:
+    """
+    c = list(data.dtype.names) if cols is None else cols
+    with open(fp, 'w') as fh:
+        d = data[c]
+        for i in xrange(len(data)):
+            fh.write(ts.join(str(x) for x in d[i]))
+            fh.write('\n')
 
-        :param data: sequence data
-        :type data: np.array
-        """
-        self.data = data
 
-    @property
-    def sequences(self):
-        return list(self.gsequences)
+def gsequences(data, cols=None):
+    """Returns a generator that yields a sequence from the provided data.
+    Sequences are determined based on the `eos` field in `data`. If no column
+    names are provided, all fields are included.
 
-    def gsequences(self, cols=None):
+    :param data: data
+    :type data: np.array
+    :param cols: column names
+    :type cols: list
+    """
+    c = list(data.dtype.names) if cols is None else cols
 
-        c = list(self.data.dtype.names) if cols is None else cols
+    # sequence start and end indices
+    s, e = 0, 0
 
-        # sequence start and end indices
-        s, e = 0, 0
+    # extracting features from sequences
+    while 0 <= s < len(data):
 
-        # extracting features from sequences
-        while 0 <= s < len(self.data):
+        # index of the end of a sequence is recorded at the beginning
+        e = data[s]['eos']
 
-            # index of the end of a sequence is recorded at the beginning
-            e = self.data[s]['eos']
+        # slicing a sequence
+        seq = data[s:e]
 
-            # slicing a sequence
-            seq = self.data[s:e]
+        # moving the start index
+        s = e
 
-            # moving the start index
-            s = e
-
-            # returning a sequence
-            yield seq[c]
-
-    def export_to_file(self, fp, cols=None, ts='\t'):
-        c = list(self.data.dtype.names) if cols is None else cols
-        with open(fp, 'w') as fh:
-            d = self.data[c]
-            for i in xrange(len(self.data)):
-                fh.write(ts.join(str(x) for x in d[i]))
-                fh.write('\n')
-
-    @property
-    def accuracy(self):
-        """Returns the POS tag accuracy based on the `postag` and `guesstag`
-        fields in the contained record array object.
-
-        :return: guess accuracy results by category
-        :rtype: AccuracyResults
-        """
-        cc = {}
-        ac = {}
-        for it in self.data:
-            if it['postag'] not in ac.keys():
-                ac[it['postag']] = 0.0
-                cc[it['postag']] = 0.0
-            if it['postag'] == it['guesstag']:
-                cc[it['postag']] += 1
-            ac[it['postag']] += 1
-
-        tcc = 0.0
-        tac = 0.0
-
-        results = eval.AccuracyResults()
-
-        for t in ac.keys():
-            results[t] = (cc[t], ac[t], cc[t] / ac[t])
-            tcc += cc[t]
-            tac += ac[t]
-
-        results['Total'] = (tcc, tac, tcc / tac)
-
-        return results
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, item):
-        return self.data[item]
-
-    def __setitem__(self, key, value):
-        self.data[key] = value
-
-    def __iter__(self):
-        return self.data.__iter__()
-
-    def __reversed__(self):
-        reversed(self.data)
-        return self
+        # returning a sequence
+        yield seq[c]
