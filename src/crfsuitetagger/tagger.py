@@ -20,7 +20,6 @@ import eval
 import pickle
 import readers
 import numpy as np
-import ConfigParser
 
 from ftex import parse_ftvec_templ
 from utils import parse_tsv, gsequences
@@ -29,12 +28,8 @@ from pycrfsuite import Trainer, Tagger
 
 class CRFSTagger:
 
-    def __init__(self, cp=None, cfg=None):
-        if cp:
-            cfg_parser = ConfigParser.ConfigParser()
-            cfg_parser.readfp(open(cp, 'r'))
-        else:
-            cfg_parser = cfg
+    def __init__(self, cfg=None):
+        cfg_parser = cfg
         self.cfg = dict(cfg_parser.items('tagger'))
         self.cfg_crf = dict(cfg_parser.items('crfsuite'))
         self.cfg_res = dict(cfg_parser.items('resources'))
