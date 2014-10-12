@@ -28,7 +28,7 @@ from pycrfsuite import Trainer, Tagger
 
 class CRFSTagger:
 
-    def __init__(self, cfg=None):
+    def __init__(self, cfg):
         cfg_parser = cfg
         self.cfg = dict(cfg_parser.items('tagger'))
         self.cfg_crf = dict(cfg_parser.items('crfsuite'))
