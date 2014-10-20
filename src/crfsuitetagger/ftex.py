@@ -54,16 +54,68 @@ class FeatureTemplate:
         self.vec = [] if tmpl is None else tmpl
         self.resources = {}
 
-        try:
-            self.win_fnx = {x.__name__: x for x in win_fnx + [self.emb_win]}
-        except TypeError:
-            self.win_fnx = {'emb': self.emb_win}
+        if win_fnx:
+            # all window functions
+            wf = win_fnx + [self.emb_win]
+            self.win_fnx = {x.__name__: x for x in wf}
+        else:
+            self.win_fnx = {'emb': FeatureTemplate.emb_win}
 
-        try:
+        if fnx:
             for f in fnx:
                 self.__dict__[f.__name__] = f
-        except TypeError:
-            pass
+
+    def parse_ftvec_templ(self, s, r):
+        """Parses a feature vector template string into a FeatureTemplate object.
+
+        *Important*: if resources (e.g. embeddings) are used in the feature template
+        they should be provided during the parsing in the `r` parameter in order to
+        be prepacked as parameters to the feature extraction function.
+
+        :param s: feature vector string
+        :type s: str
+        :param r: dictionary of resources
+        :type r: dict
+        :return: FeatureTemplate
+        """
+        fts_str = [x for x in re.sub('[\t ]', '', s).split(';')]
+        for ft in fts_str:
+
+            # empty featues (...; ;feature:params)
+            if ft.strip() == '':
+                continue
+
+            # no parameter features
+            no_par = ':' not in ft
+            # misplaced column without parameters
+            no_par_end_col = ft.count(':') == 1 and ft.endswith(':')
+            if no_par or no_par_end_col:
+                fn = ft if no_par else ft[:-1]
+                self.add_feature(fn)
+                continue
+
+            # function name & parameter values
+            fn, v = ft.split(':', 1)
+
+            # value matches
+            m = re.match('(?:\[([0-9:,-]+)\])?(.+)?', v)
+
+            # window range
+            fw = parse_range(m.group(1)) if m.group(1) else None
+
+            # function parameters
+            fp = []
+
+            # adding resources to the parameters if required
+            if fn in r.keys():
+                fp.append(r[fn])
+
+            # adding function parameters if specified
+            if m.group(2) is not None:
+                fp.extend([x for x in m.group(2).split(',') if x])
+
+            # name, window, parameters
+            self.add_win_features(fn, fw, tuple(fp))
 
     def make_fts(self,
                  data,
@@ -80,10 +132,17 @@ class FeatureTemplate:
         :return:
         """
         ret = [data[i][form_name]]
+
+        # joint attribute dictionary of the class and the instance
+        ad = {x: y.__func__ if type(y) is staticmethod else y
+              for x, y
+              in FeatureTemplate.__dict__.items()}
+        ad.update(self.__dict__)
+
         for itm in self.vec:
             f = itm[0]
             p = itm[1:]
-            func = FeatureTemplate.__dict__[f].__func__
+            func = ad[f] if type(f) is str else f
             ret.append(func(data, i, *(p + args), **kwargs))
         return ret
 
@@ -111,14 +170,10 @@ class FeatureTemplate:
         :param fp: feature extraction function parameters
         :type fp: tuple
         """
-        if type(fn) is str:
-            if fn in self.win_fnx.keys():
-                func = self.win_fnx[fn]
-            else:
-                func = self.generic_win
-        else:
-            func = fn
-        for v in func(fn, fw, fp, *args, **kwargs):
+        wfn = fn if type(fn) is str else fn.__name__
+        wfnx = self.win_fnx
+        f = wfnx[wfn] if wfn in wfnx.keys() else self.generic_win
+        for v in f(fn, fw, fp, *args, **kwargs):
             self.vec.append(v)
 
     @staticmethod
@@ -135,47 +190,57 @@ class FeatureTemplate:
         :param fw: embeddings window (range of ints)
         :param fp: embeddings
         """
-        e, = fp
-        emb_vec_size = len(e[e.keys()[0]])
+
+        # embeddings
+        e = fp[0]
+
+        # vector coverage
+        if len(fp) > 1:
+            # parse specified range of the embeddings vector
+            vc = parse_range(fp[1][1:-1])
+        else:
+            # assume iteration over the whole vector
+            vc = range(len(e[e.keys()[0]]))
+
         for i in fw:
-            for j in range(emb_vec_size):
+            for j in vc:
                 yield (fn, i, j, e)
 
 
     @staticmethod
     def word(data, i, rel=0, *args, **kwargs):
-        try:
+        if 0 <= i + rel < len(data):
             form = data[i + rel]['form']
-        except (IndexError, KeyError):
+        else:
             form = None
-        return 'w[%s]=%s' % (i + rel, form)
+        return 'w[%s]=%s' % (rel, form)
 
     @staticmethod
     def pos(data, i, rel=0, *args, **kwargs):
-        try:
+        if 0 <= i + rel < len(data):
             postag = data[i + rel]['postag']
-        except (IndexError, KeyError):
+        else:
             postag = None
-        return 'pos[%s]=%s' % (i + rel, postag)
+        return 'p[%s]=%s' % (rel, postag)
 
     @staticmethod
     def chunk(data, i, rel=0, *args, **kwargs):
-        try:
-            chunktag = data[i + rel].chunktag
-        except (IndexError, KeyError):
+        if 0 <= i + rel < len(data):
+            chunktag = data[i + rel]['chunktag']
+        else:
             chunktag = None
-        return 'chunk[%s]=%s' % (i + rel, chunktag)
+        return 'ch[%s]=%s' % (rel, chunktag)
 
     @staticmethod
     def can(data, i, rel=0, *args, **kwargs):
-        try:
+        if 0 <= i + rel < len(data):
             w = data[i + rel]['form']
             w = re.sub('\d', '#', w)
             w = re.sub('\w', 'x', w)
             w = re.sub('[^#x]', '*', w)
-        except (IndexError, KeyError):
+        else:
             w = None
-        return 'can[%s]=%s' % (i + rel, w)
+        return 'can[%s]=%s' % (rel, w)
 
     @staticmethod
     def brown(data, i, rel=0, b=None, p=None, *args, **kwargs):
@@ -194,14 +259,18 @@ class FeatureTemplate:
         :rtype str:
         """
         pref = 'full'
-        try:
-            cname = b[data[i + rel]['form']]
-            if p:
-                cname = cname[:int(p[0])]
-                pref = p
-        except (KeyError, IndexError):
+        if 0 <= i + rel < len(data):
+            try:
+                cname = b[data[i + rel]['form']]
+                if p:
+                    cname = cname[:int(p[0])]
+                    pref = p
+            except KeyError:
+                cname = None
+                pref = None
+        else:
             cname = None
-        return 'cname[%s]:%s=%s' % (rel, pref, cname)
+        return 'cn[%s]:%s=%s' % (rel, pref, cname)
 
     @staticmethod
     def cls(data, i, rel=0, c=None, *args, **kwargs):
@@ -218,83 +287,33 @@ class FeatureTemplate:
         :return: feature string
         :rtype: str
         """
-        try:
-            cnum = c[data[i + rel]['form']]
-        except (KeyError, IndexError):
+        if 0 <= i + rel < len(data):
+            try:
+                cnum = c[data[i + rel]['form']]
+            except KeyError:
+                cnum = None
+        else:
             cnum = None
         return 'cnum[%s]=%s' % (rel, cnum)
 
     @staticmethod
     def emb(data, i, rel=0, j=0, e=None, *args, **kwargs):
-        try:
-            emb = e[data[i + rel]['form']][j]
-        except (KeyError, IndexError):
+        if 0 <= i + rel < len(data):
+            try:
+                emb = e[data[i + rel]['form']][j]
+            except KeyError:
+                emb = None
+        else:
             emb = None
         return 'emb[%s][%s]=%s' % (rel, j, emb)
 
     @staticmethod
     def isnum(data, i, rel=0, *args, **kwargs):
-        try:
+        if 0 <= i + rel < len(data):
             isnum = bool(re.match('[0-9/]+', data[i + rel]['form']))
-        except (IndexError, KeyError):
+        else:
             isnum = None
         return 'isnum[%s]=%s' % (str(rel), isnum)
-
-
-def parse_ftvec_templ(s, r):
-    """Parses a feature vector template string into a FeatureTemplate object.
-
-    *Important*: if resources (e.g. embeddings) are used in the feature template
-    they should be provided during the parsing in the `r` parameter in order to
-    be prepacked as parameters to the feature extraction function.
-
-    :param s: feature vector string
-    :type s: str
-    :param r: dictionary of resources
-    :type r: dict
-    :return: FeatureTemplate
-    """
-    ftt = FeatureTemplate()
-    fts_str = [x for x in s.strip().replace(' ', '').split(';')]
-    for ft in fts_str:
-
-        # empty featues (...; ;feature:params)
-        if ft.strip() == '':
-            continue
-
-        # no parameter features
-        no_par = ':' not in ft
-        # misplaced column without parameters
-        no_par_end_col = ft.count(':') == 1 and ft.endswith(':')
-        if no_par or no_par_end_col:
-            fn = ft if no_par else ft[:-1]
-            ftt.add_feature(fn)
-            continue
-
-        # function name & parameter values
-        fn, v = ft.split(':', 1)
-
-        # value matches
-        m = re.match('(?:\[([0-9:,-]+)\])?(.+)?', v)
-
-        # window range
-        fw = parse_range(m.group(1)) if m.group(1) else None
-
-        # function parameters
-        fp = []
-
-        # adding resources to the parameters if required
-        if fn in r.keys():
-            fp.append(r[fn])
-
-        # adding function parameters if specified
-        if m.group(2) is not None:
-            fp.append(tuple(x for x in m.group(2).split(',') if x))
-
-        # name, window, parameters
-        ftt.add_win_features(fn, fw, tuple(fp))
-
-    return ftt
 
 
 def parse_range(r):
