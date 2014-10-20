@@ -54,6 +54,8 @@ def parse_tsv(fp, cols, ts='\t'):
 
     <form>  <postag>    <chunktag>  <guesstag>
 
+    Note: all configurations should start with <form>
+
     :param fp: file path
     :type fp: str
     :param cols: column names
@@ -68,8 +70,8 @@ def parse_tsv(fp, cols, ts='\t'):
     c = ct[cols] if type(cols) is str else cols
 
     rc = count_records(fp)
-    nc = len(c)
-    dt = 'a60,{},int32'.format(','.join('a10' for _ in range(nc)))
+    nc = len(c) - 1
+    dt = 'a60,{},a10,int32'.format(','.join('a10' for _ in range(nc)))
 
     data = np.zeros(rc, dtype=dt)
 
@@ -83,8 +85,11 @@ def parse_tsv(fp, cols, ts='\t'):
                 data[start]['eos'] = idx
                 start = idx
                 continue
+            # Note: len(c) is there to handle input data with more columns than
+            # declared in the `cols` parameter.
             data[idx] = tuple(line.strip().split(ts)[:len(c)]) + ('', -1)
             idx += 1
+        data[start]['eos'] = idx
     return data
 
 
@@ -104,7 +109,7 @@ def count_records(fp):
     return c
 
 
-def export(data, fp, cols=None, ts='\t'):
+def export(data, file, cols=None, ts='\t'):
     """ Exports recarray to a TSV sequence file, where sequences are divided by
     empty lines.
 
@@ -113,18 +118,37 @@ def export(data, fp, cols=None, ts='\t'):
     :param fp: file path
     :type fp: str
     :param cols: column names
-    :type cols: tuple or list
+    :type cols: list or str
     :param ts:
     """
-    col_templ = {'pos': ['form', 'postag', 'guesstag'],
+
+    # column templates
+    ct = {'pos': ['form', 'postag', 'guesstag'],
                  'chunk': ['form', 'postag', 'chunktag', 'guesstag']}
-    c = list(data.dtype.names) if cols is None else cols
-    c = c if type(c) is list else col_templ[c]
-    with open(fp, 'w') as fh:
-        d = data[c]
-        for i in xrange(len(data)):
-            fh.write(ts.join(str(x) for x in d[i]))
-            fh.write('\n')
+
+    # all columns in the data
+    dt = data.dtype.names
+
+    # columns to be exported
+    c = list(dt) if cols is None else ct[cols] if type(cols) is str else cols
+
+    rc = len(data)
+    d = data[c]
+    eos = None
+    for i in xrange(rc):
+        # index of the beginning of the next sequence
+        eos = data[i]['eos'] if data[i]['eos'] > 0 else eos
+
+        # writing current entry
+        file.write(ts.join(str(x) for x in d[i]))
+
+        # not writing a newline after last entry
+        if i != rc - 1:
+            file.write('\n')
+
+        # writing an empty line after sequence
+        if eos == i + 1:
+            file.write('\n')
 
 
 def gsequences(data, cols=None):
@@ -135,9 +159,17 @@ def gsequences(data, cols=None):
     :param data: data
     :type data: np.array
     :param cols: column names
-    :type cols: list
+    :type cols: list or str
     """
-    c = list(data.dtype.names) if cols is None else cols
+    # column templates
+    ct = {'pos': ['form', 'postag', 'guesstag'],
+                 'chunk': ['form', 'postag', 'chunktag', 'guesstag']}
+
+    # all columns in the data
+    dt = data.dtype.names
+
+    # columns to be exported
+    c = list(dt) if cols is None else ct[cols] if type(cols) is str else cols
 
     # sequence start and end indices
     s, e = 0, 0
