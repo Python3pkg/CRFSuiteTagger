@@ -121,7 +121,10 @@ def conll(data):
     fh_out = open(fp_res, 'w')
 
     print '%s exporting' % time.asctime()
-    export(data, fp_dp, ['form', 'postag', 'chunktag', 'guesstag'], ' ')
+    export(data,
+           open(fp_dp, 'w'),
+           ['form', 'postag', 'chunktag', 'guesstag'],
+           ' ')
 
     cwd = join(os.getcwd(), "prl/")
     c = cmd(
