@@ -14,6 +14,7 @@
 # along with CRFSuiteTagger.  If not, see <http://www.gnu.org/licenses/>.
 __author__ = 'Aleksandar Savkov'
 
+import os.path
 import numpy as np
 
 
@@ -188,3 +189,11 @@ def gsequences(data, cols=None):
 
         # returning a sequence
         yield seq[c]
+
+
+def expand_paths(cfg):
+    for sec in cfg.sections():
+        for opt in cfg.options(sec):
+            o = cfg.get(sec, opt)
+            if os.path.exists(os.path.expanduser(o)):
+                cfg.set(sec, opt, os.path.expanduser(o))

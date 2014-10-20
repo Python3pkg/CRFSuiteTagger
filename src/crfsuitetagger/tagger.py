@@ -22,7 +22,7 @@ import readers
 import numpy as np
 
 from ftex import FeatureTemplate
-from utils import parse_tsv, gsequences
+from utils import parse_tsv, gsequences, expand_paths
 from pycrfsuite import Trainer, Tagger
 
 
@@ -30,6 +30,7 @@ class CRFSTagger:
 
     def __init__(self, cfg, ):
         self.cfg = cfg
+        expand_paths(self.cfg)
         self.ft_tmpl = None
         self.resources = None
         self.train_data = None
