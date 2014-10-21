@@ -14,6 +14,7 @@
 # along with CRFSuiteTagger.  If not, see <http://www.gnu.org/licenses/>.
 __author__ = 'Aleksandar Savkov'
 
+import re
 import os.path
 import numpy as np
 
@@ -191,9 +192,12 @@ def gsequences(data, cols=None):
         yield seq[c]
 
 
-def expand_paths(cfg):
+def expandpaths(cfg):
     for sec in cfg.sections():
         for opt in cfg.options(sec):
-            o = cfg.get(sec, opt)
-            if os.path.exists(os.path.expanduser(o)):
-                cfg.set(sec, opt, os.path.expanduser(o))
+            # option value
+            ov = cfg.get(sec, opt)
+
+            # does it look like it needs expanding
+            if re.match('^~/(?:[^\/]+/)*(?:[^\/]+)?', ov):
+                cfg.set(sec, opt, os.path.expanduser(ov))
