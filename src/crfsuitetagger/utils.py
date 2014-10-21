@@ -91,7 +91,8 @@ def parse_tsv(fp, cols, ts='\t'):
             # declared in the `cols` parameter.
             data[idx] = tuple(line.strip().split(ts)[:len(c)]) + ('', -1)
             idx += 1
-        data[start]['eos'] = idx
+        if start < len(data):
+            data[start]['eos'] = idx
     return data
 
 
