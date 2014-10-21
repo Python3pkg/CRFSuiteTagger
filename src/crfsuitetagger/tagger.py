@@ -22,7 +22,7 @@ import readers
 import numpy as np
 
 from ftex import FeatureTemplate
-from utils import parse_tsv, gsequences, expand_paths
+from utils import parse_tsv, gsequences, expandpaths
 from pycrfsuite import Trainer, Tagger
 
 
@@ -30,13 +30,11 @@ class CRFSTagger:
 
     def __init__(self, cfg, ):
         self.cfg = cfg
-        expand_paths(self.cfg)
+        expandpaths(self.cfg)
         self.ft_tmpl = None
         self.resources = None
         self.train_data = None
         self.test_data = None
-
-        self.tagger = None
 
         # loading resources (clusters, embeddings, etc.)
         self.load_resources()
@@ -85,6 +83,10 @@ class CRFSTagger:
     @property
     def eval_func(self):
         return getattr(eval, '%s' % self.cfg_tag['eval_func'])
+
+    @property
+    def verbose(self):
+        return self.cfg_tag.get('verbose', True)
 
     def load_resources(self):
         self.resources = {}
@@ -176,16 +178,11 @@ class CRFSTagger:
         print '%s Extracting features...' % time.asctime()
         X = self._xfts(d) if fts is None else fts
 
-        X = list(X)
-
-        for x in X[10]:
-            print x
-
         # extract labels or use provided
         print '%s extracting labels' % time.asctime()
         y = gsequences(d, [lc]) if ls is None else ls
 
-        trainer = Trainer(verbose=False)
+        trainer = Trainer(verbose=self.verbose)
 
         # setting CRFSuite parameters
         trainer.set_params(self.cfg_crf)
@@ -217,13 +214,10 @@ class CRFSTagger:
         # use provided data or testing data from config file
         d = self.test_data if data is None else data
 
-        # checking if there is a trained or provided tagger
-        if self.tagger is None and tagger is None:
-            self.tagger = Tagger()
-            self.tagger.open(self.model)
-
-        # assigning tagger
-        tgr = self.tagger if tagger is None else tagger
+        # checking for a provided tagger
+        if tagger is None:
+            tgr = Tagger()
+            tgr.open(self.model)
 
         # setting column name for the labels
         lc = self.glbl_col if lbl_col is None else lbl_col
