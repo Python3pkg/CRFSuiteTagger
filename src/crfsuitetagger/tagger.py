@@ -86,7 +86,7 @@ class CRFSTagger:
 
     @property
     def verbose(self):
-        return self.cfg_tag.get('verbose', True)
+        return bool(self.cfg_tag.get('verbose', True))
 
     def load_resources(self):
         self.resources = {}
