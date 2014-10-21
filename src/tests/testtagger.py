@@ -14,12 +14,11 @@
 # along with CRFSuiteTagger.  If not, see <http://www.gnu.org/licenses/>.
 __author__ = 'Aleksandar Savkov'
 
-import os, sys
-import pickle
+import os
 import time
-import numpy as np
 import StringIO
 from unittest import TestCase
+
 from crfsuitetagger.ftex import *
 from crfsuitetagger.utils import *
 
@@ -187,24 +186,40 @@ trap\tN
 
         real_fts = [
             [
-                ['The', 'w[-3]=None', 'w[-2]=None', 'w[4]=across', 'p[-2]=None', 'p[0]=D', 'fakeres[0]=None'],
-                ['quick', 'w[-3]=None', 'w[-2]=None', 'w[4]=the', 'p[-2]=None', 'p[0]=A', 'fakeres[0]=None'],
-                ['fox', 'w[-3]=None', 'w[-2]=The', 'w[4]=river', 'p[-2]=D', 'p[0]=N', 'fakeres[0]=0'],
-                ['jumped', 'w[-3]=The', 'w[-2]=quick', 'w[4]=.', 'p[-2]=A', 'p[0]=V', 'fakeres[0]=None'],
-                ['across', 'w[-3]=quick', 'w[-2]=fox', 'w[4]=None', 'p[-2]=N', 'p[0]=R', 'fakeres[0]=None'],
-                ['the', 'w[-3]=fox', 'w[-2]=jumped', 'w[4]=None', 'p[-2]=V', 'p[0]=D', 'fakeres[0]=None'],
-                ['river', 'w[-3]=jumped', 'w[-2]=across', 'w[4]=None', 'p[-2]=R', 'p[0]=N', 'fakeres[0]=None'],
-                ['.', 'w[-3]=across', 'w[-2]=the', 'w[4]=None', 'p[-2]=D', 'p[0]=.', 'fakeres[0]=None']
+                ['The', 'w[-3]=None', 'w[-2]=None', 'w[4]=across', 'p[-2]=None',
+                 'p[0]=D', 'fakeres[0]=None'],
+                ['quick', 'w[-3]=None', 'w[-2]=None', 'w[4]=the', 'p[-2]=None',
+                 'p[0]=A', 'fakeres[0]=None'],
+                ['fox', 'w[-3]=None', 'w[-2]=The', 'w[4]=river', 'p[-2]=D',
+                 'p[0]=N', 'fakeres[0]=0'],
+                ['jumped', 'w[-3]=The', 'w[-2]=quick', 'w[4]=.', 'p[-2]=A',
+                 'p[0]=V', 'fakeres[0]=None'],
+                ['across', 'w[-3]=quick', 'w[-2]=fox', 'w[4]=None', 'p[-2]=N',
+                 'p[0]=R', 'fakeres[0]=None'],
+                ['the', 'w[-3]=fox', 'w[-2]=jumped', 'w[4]=None', 'p[-2]=V',
+                 'p[0]=D', 'fakeres[0]=None'],
+                ['river', 'w[-3]=jumped', 'w[-2]=across', 'w[4]=None',
+                 'p[-2]=R', 'p[0]=N', 'fakeres[0]=None'],
+                ['.', 'w[-3]=across', 'w[-2]=the', 'w[4]=None', 'p[-2]=D',
+                 'p[0]=.', 'fakeres[0]=None']
             ],
             [
-                ['The', 'w[-3]=None', 'w[-2]=None', 'w[4]=in', 'p[-2]=None', 'p[0]=D', 'fakeres[0]=None'],
-                ['stupid', 'w[-3]=None', 'w[-2]=None', 'w[4]=the', 'p[-2]=None', 'p[0]=A', 'fakeres[0]=None'],
-                ['wolf', 'w[-3]=None', 'w[-2]=The', 'w[4]=trap', 'p[-2]=D', 'p[0]=N', 'fakeres[0]=0'],
-                ['fell', 'w[-3]=The', 'w[-2]=stupid', 'w[4]=.', 'p[-2]=A', 'p[0]=V', 'fakeres[0]=None'],
-                ['in', 'w[-3]=stupid', 'w[-2]=wolf', 'w[4]=None', 'p[-2]=N', 'p[0]=I', 'fakeres[0]=None'],
-                ['the', 'w[-3]=wolf', 'w[-2]=fell', 'w[4]=None', 'p[-2]=V', 'p[0]=D', 'fakeres[0]=None'],
-                ['trap', 'w[-3]=fell', 'w[-2]=in', 'w[4]=None', 'p[-2]=I', 'p[0]=N', 'fakeres[0]=None'],
-                ['.', 'w[-3]=in', 'w[-2]=the', 'w[4]=None', 'p[-2]=D', 'p[0]=.', 'fakeres[0]=None']
+                ['The', 'w[-3]=None', 'w[-2]=None', 'w[4]=in', 'p[-2]=None',
+                 'p[0]=D', 'fakeres[0]=None'],
+                ['stupid', 'w[-3]=None', 'w[-2]=None', 'w[4]=the', 'p[-2]=None',
+                 'p[0]=A', 'fakeres[0]=None'],
+                ['wolf', 'w[-3]=None', 'w[-2]=The', 'w[4]=trap', 'p[-2]=D',
+                 'p[0]=N', 'fakeres[0]=0'],
+                ['fell', 'w[-3]=The', 'w[-2]=stupid', 'w[4]=.', 'p[-2]=A',
+                 'p[0]=V', 'fakeres[0]=None'],
+                ['in', 'w[-3]=stupid', 'w[-2]=wolf', 'w[4]=None', 'p[-2]=N',
+                 'p[0]=I', 'fakeres[0]=None'],
+                ['the', 'w[-3]=wolf', 'w[-2]=fell', 'w[4]=None', 'p[-2]=V',
+                 'p[0]=D', 'fakeres[0]=None'],
+                ['trap', 'w[-3]=fell', 'w[-2]=in', 'w[4]=None', 'p[-2]=I',
+                 'p[0]=N', 'fakeres[0]=None'],
+                ['.', 'w[-3]=in', 'w[-2]=the', 'w[4]=None', 'p[-2]=D', 'p[0]=.',
+                 'fakeres[0]=None']
             ]
         ]
 
