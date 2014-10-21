@@ -112,14 +112,14 @@ def count_records(fp):
     return c
 
 
-def export(data, file, cols=None, ts='\t'):
+def export(data, f, cols=None, ts='\t'):
     """ Exports recarray to a TSV sequence file, where sequences are divided by
     empty lines.
 
     :param data: data
     :type data: np.array
-    :param fp: file path
-    :type fp: str
+    :param f: output file
+    :type f: file
     :param cols: column names
     :type cols: list or str
     :param ts:
@@ -143,15 +143,15 @@ def export(data, file, cols=None, ts='\t'):
         eos = data[i]['eos'] if data[i]['eos'] > 0 else eos
 
         # writing current entry
-        file.write(ts.join(str(x) for x in d[i]))
+        f.write(ts.join(str(x) for x in d[i]))
 
         # not writing a newline after last entry
         if i != rc - 1:
-            file.write('\n')
+            f.write('\n')
 
         # writing an empty line after sequence
         if eos == i + 1:
-            file.write('\n')
+            f.write('\n')
 
 
 def gsequences(data, cols=None):
