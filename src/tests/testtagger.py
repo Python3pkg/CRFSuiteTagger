@@ -265,7 +265,7 @@ trap\tN
                 w = FeatureTemplate.emb(self.data, i, rel, j, e)
                 r = i + rel
                 v = None
-                if r >= 0:
+                if len(self.data) > r >= 0:
                     v = e.get(self.data[r][0], [None for _ in range(100)])[j]
                 rw = 'emb[%s][%s]=%s' % (rel, j, v)
                 self.assertEqual(w, rw)
@@ -277,13 +277,25 @@ trap\tN
             w = FeatureTemplate.cls(self.data, i, rel, c)
             r = i + rel
             v = None
-            if r >= 0:
+            if len(self.data) > r >= 0:
                 v = c.get(self.data[r][0], None)
             rw = 'cnum[%s]=%s' % (rel, v)
             self.assertEqual(w, rw)
 
     def test_brown(self):
-        pass
+        b = {'fox': '00011110011010', 'quick': '11001001110011'}
+        i = 2
+        p = 10
+        for rel in [-4, -1, 0, 2]:
+            w = FeatureTemplate.brown(self.data, i, rel, b, p)
+            r = i + rel
+            v = None
+            if len(self.data) > r >= 0:
+                v = b.get(self.data[r][0], None)
+            if v:
+                v = v[:10]
+            rw = 'cn[%s]:%s=%s' % (rel, p, v)
+            self.assertEqual(w, rw)
 
 
 class TestTagger(TestCase):
