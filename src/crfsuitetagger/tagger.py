@@ -28,7 +28,7 @@ from pycrfsuite import Trainer, Tagger
 
 class CRFSTagger:
 
-    def __init__(self, cfg, ):
+    def __init__(self, cfg, load_data=True):
         self.cfg = cfg
         expandpaths(self.cfg)
         self.ft_tmpl = None
@@ -40,7 +40,8 @@ class CRFSTagger:
         self.load_resources()
 
         # loading data
-        self.load_data(self.cols)
+        if load_data:
+            self.load_data()
 
         # parsing feature template
         self.ft_tmpl = FeatureTemplate()
@@ -94,7 +95,7 @@ class CRFSTagger:
             self.resources[n] = getattr(readers, 'read_%s' % n)(p)
 
     def load_data(self, cols=None):
-        c = self.cfg_tag.get('cols', cols)
+        c = cols if cols else self.cols
         if 'train' in self.cfg_tag:
             self.train_data = parse_tsv(self.cfg_tag['train'],
                                         cols=c,
