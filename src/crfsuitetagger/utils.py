@@ -19,31 +19,6 @@ import os.path
 import numpy as np
 
 
-def parse_conll_eval_table(fp):
-    """Parses the LaTeX table output of the CoNLL-2000 evaluation script into a
-    dictionary with string keys and tuple values containing precision, recall,
-    and f1-score values at the respective positions.
-
-    :param fp: file path
-    :type fp: str
-    :return: results by category
-    :rtype: dict
-    """
-    table = {}
-
-    with open(fp, 'r') as tbl:
-        tbl.readline()
-        for row in tbl:
-            cells = [
-                x.strip().replace('%', '').replace('\\', '')
-                for x
-                in row[:-9].split("&")
-            ]
-            table[cells[0]] = (cells[1], cells[2], cells[3])
-
-    return table
-
-
 def parse_tsv(fp, cols, ts='\t'):
     """Parses a file of TSV sequences separated by an empty line and produces
     a numpy recarray. The `cols` parameter can use a predefined set of field

@@ -15,6 +15,7 @@
 __author__ = 'Aleksandar Savkov'
 
 import os
+import re
 import sys
 import time
 import StringIO
@@ -23,7 +24,6 @@ import traceback
 from os.path import join
 from utils import export
 from iterpipes import check_call, cmd
-from utils import parse_conll_eval_table
 from subprocess import CalledProcessError
 
 
@@ -41,11 +41,31 @@ class AccuracyResults(dict):
         :return: total results key
         :rtype: str
         """
-        return self._total_name
+        return self[self._total_name]
 
-    @total.setter
-    def total(self, name):
-        self._total_name = name
+    def parse_conll_eval_table(self, fp):
+        """Parses the LaTeX table output of the CoNLL-2000 evaluation script
+        into this object.
+
+        :param fp: file path
+        :type fp: str
+        :return: results by category
+        :rtype: dict
+        """
+        with open(fp, 'r') as tbl:
+            tbl.readline()
+            for row in tbl:
+                clean_row = re.sub('([\\\\%]|hline)', '', row)
+                cells = [x.strip() for x in clean_row.split('&')]
+                self[cells[0]] = {
+                    'precision': float(cells[1]),
+                    'recall': float(cells[2]),
+                    'fscore': float(cells[3])
+                }
+        self[self._total_name] = self['Overall']
+        del self['Overall']
+
+        return None
 
     def export_to_file(self, fp, *args, **kwargs):
         """Export results to a file.
@@ -53,45 +73,32 @@ class AccuracyResults(dict):
         :param fp: file path
         :type fp: str
         """
-        with open(fp, 'w') as f:
-            f.write('-----------------------\n')
-            for k in kwargs.keys():
-                if type(kwargs[k]) is not list:
-                    kwargs[k] = [kwargs[k]]
-                f.write('%s: %s' % (k, ' '.join([str(x) for x in kwargs[k]])))
-                f.write('\n-----------------------\n')
-            for i in self.items():
-                if i[0] == 'Total':
-                    continue
-                k = i[0]
-                n_cor, n_all, acc = i[1]
-                f.write('%s: %s (%s/%s)\n' % (k, acc, n_cor, n_all))
-            f.write('-----------------------\n')
-            f.write('%s: %s (%s/%s)\n' % (self.total,
-                                          self[self.total][2],
-                                          self[self.total][0],
-                                          self[self.total][1]))
-            f.write('-----------------------\n')
+        with open(fp, 'w') as fh:
+            self._to_str(fh)
 
-    def __setitem__(self, key, value):
-        tuple_val = value if type(value) is tuple else (0, 0, value)
-        super(AccuracyResults, self).__setitem__(key, tuple_val)
+    def _pack_str(self, key):
+        itm = self[key]
+        return '%s ==> pre: %s, rec: %s, f: %s acc: %s\n' % (
+            key,
+            itm.get('precision', 'n.a.'),
+            itm.get('recall', 'n.a.'),
+            itm.get('fscore', 'n.a.'),
+            itm.get('accuracy', 'n.a.')
+        )
+
+    def _to_str(self, fh):
+        fh.write('--------------------------------------------------------\n')
+        for k in self.keys():
+            if k == 'Total':
+                continue
+            fh.write(self._pack_str(k))
+        fh.write('--------------------------------------------------------\n')
+        fh.write(self._pack_str(self._total_name))
+        fh.write('--------------------------------------------------------\n')
 
     def __str__(self):
         rf = StringIO.StringIO()
-        rf.write('-----------------------\n')
-        for i in self.items():
-            if i[0] == 'Total':
-                continue
-            k = i[0]
-            n_cor, n_all, acc = i[1]
-            rf.write('%s: %s (%s/%s)\n' % (k, acc, n_cor, n_all))
-        rf.write('-----------------------\n')
-        rf.write('%s: %s (%s/%s)\n' % (self.total,
-                                       self[self.total][2],
-                                       self[self.total][0],
-                                       self[self.total][1]))
-        rf.write('-----------------------\n')
+        self._to_str(rf)
         return rf.getvalue()
 
     def __repr__(self):
@@ -135,11 +142,10 @@ def conll(data):
     )
 
     r = AccuracyResults()
-    r.total = 'Overall'
 
     try:
         check_call(c)
-        r.update(parse_conll_eval_table(fp_res))
+        r.parse_conll_eval_table(fp_res)
     except CalledProcessError:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         print "*** print_tb:"
@@ -165,8 +171,8 @@ def pos(data):
     :return: guess accuracy results by category
     :rtype: AccuracyResults
     """
-    cc = {}
-    ac = {}
+    cc = {}  # correct count
+    ac = {}  # all count
     for it in data:
         if it['postag'] not in ac.keys():
             ac[it['postag']] = 0.0
@@ -175,16 +181,16 @@ def pos(data):
             cc[it['postag']] += 1
         ac[it['postag']] += 1
 
-    tcc = 0.0
-    tac = 0.0
+    tcc = 0.0  # total correct count
+    tac = 0.0  # total all count
 
     results = AccuracyResults()
 
     for t in ac.keys():
-        results[t] = (cc[t], ac[t], cc[t] / ac[t])
+        results[t] = {'accuracy': cc[t] / ac[t]}
         tcc += cc[t]
         tac += ac[t]
 
-    results['Total'] = (tcc, tac, tcc / tac)
+    results['Total'] = {'accuracy': tcc / tac}
 
     return results

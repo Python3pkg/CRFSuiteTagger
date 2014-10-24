@@ -21,6 +21,7 @@ from unittest import TestCase
 
 from crfsuitetagger.ftex import *
 from crfsuitetagger.utils import *
+from crfsuitetagger.eval import *
 
 
 class TestUtils(TestCase):
@@ -314,6 +315,37 @@ trap\tN
                 v = v[:10]
             rw = 'cn[%s]:%s=%s' % (rel, p, v)
             self.assertEqual(w, rw)
+
+
+class TestEval(TestCase):
+
+    def test_pos(self):
+        data = [{'postag': 'N' if x % 2 else 'V',
+                 'guesstag': 'N' if x % 2 else 'V'} for x in range(10)]
+        data[0]['guesstag'] = 'N'
+        r = pos(data)
+        self.assertEqual(r['Total']['accuracy'], 0.9)
+        self.assertEqual(r['V']['accuracy'], 0.8)
+        self.assertEqual(r['N']['accuracy'], 1.0)
+
+    def test_conll(self):
+        """This tests only the data is correctly processed and parsed. It does
+        not test the CoNLL evaluation script results.
+
+
+        """
+        dt = 'a10,a10,a10,a10,int32'
+        data = np.zeros(10, dtype=dt)
+        data.dtype.names = ['form', 'postag', 'chunktag', 'guesstag', 'eos']
+        for x in range(10):
+            data[x] = ('bla', 'N', 'B-NP' if x % 2 else 'B-VP',
+                       'B-NP' if x % 2 else 'B-VP', 9 if x == 0 else -1)
+        data[0]['guesstag'] = 'B-NP'
+        data[0]['guesstag'] = 'I-NP'
+        r = conll(data)
+        self.assertAlmostEqual(float(r['Total']['fscore']), 90.0)
+        self.assertAlmostEqual(float(r['VP']['fscore']), 88.89)
+        self.assertAlmostEqual(float(r['NP']['fscore']), 90.91)
 
 
 class TestTagger(TestCase):
