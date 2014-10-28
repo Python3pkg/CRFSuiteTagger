@@ -16,6 +16,8 @@ __author__ = 'Aleksandar Savkov'
 
 import re
 import os.path
+import StringIO
+import ConfigParser
 import numpy as np
 
 
@@ -177,3 +179,22 @@ def expandpaths(cfg):
             # does it look like it needs expanding
             if re.match('^~/(?:[^\/]+/)*(?:[^\/]+)?', ov):
                 cfg.set(sec, opt, os.path.expanduser(ov))
+
+
+def clipcfg(cfg):
+    c = copycfg(cfg)
+    c.set('tagger', 'train', None)
+    c.set('tagger', 'test', None)
+    c.set('tagger', 'model', None)
+    for o in c.options('resources'):
+        c.set('resources', o, None)
+    return c
+
+
+def copycfg(cfg):
+    c = ConfigParser.ConfigParser()
+    buff = StringIO.StringIO()
+    cfg.write(buff)
+    buff.seek(0)
+    c.readfp(buff)
+    return c

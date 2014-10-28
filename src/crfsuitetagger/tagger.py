@@ -22,26 +22,40 @@ import readers
 import numpy as np
 
 from ftex import FeatureTemplate
-from utils import parse_tsv, gsequences, expandpaths
+from utils import parse_tsv, gsequences, expandpaths, clipcfg
 from pycrfsuite import Trainer, Tagger
 
 
 class CRFSTagger:
 
-    def __init__(self, cfg, load_data=True):
-        self.cfg = cfg
-        expandpaths(self.cfg)
+    def __init__(self, cfg=None, mp=None):
+
+        self.cfg = None
         self.ft_tmpl = None
         self.resources = None
         self.train_data = None
         self.test_data = None
 
-        # loading resources (clusters, embeddings, etc.)
-        self.load_resources()
+        if cfg:
 
-        # loading data
-        if load_data:
+            self.cfg = cfg
+            expandpaths(self.cfg)
+
+            # loading resources (clusters, embeddings, etc.)
+            self.load_resources()
+
+            # loading data
             self.load_data()
+
+        elif mp:
+            m = pickle.load(open(mp, 'r'))
+            self.cfg = m.cfg
+            self.cfg.set('tagger', 'model', mp)
+            self.resources = m.resources
+
+        assert self.cfg is not None, 'Configuration initialisation failed.' \
+                                     'Please, provide either a config object ' \
+                                     'or a model.'
 
         # parsing feature template
         self.ft_tmpl = FeatureTemplate()
@@ -78,7 +92,7 @@ class CRFSTagger:
         return self.cfg_tag['guess_label_col']
 
     @property
-    def model(self):
+    def model_path(self):
         return self.cfg_tag['model']
 
     @property
@@ -158,6 +172,12 @@ class CRFSTagger:
         for s in d:
             lbls.append([getattr(x, lc) for x in s])
 
+    def dump_model(self, fp):
+        md = Model()
+        md.cfg = clipcfg(self.cfg)
+        md.resources = self.resources
+        pickle.dump(md, open(fp, 'w'))
+
     def dump_ft_template(self, fp):
         pickle.dump(self.ft_tmpl, fp)
 
@@ -192,9 +212,12 @@ class CRFSTagger:
             trainer.append(x_seq, [l[0] for l in y_seq])
 
         print '%s Training...' % time.asctime()
-        trainer.train(self.model)
+        crfs_mp = '%s.crfs' % self.model_path
+        trainer.train(crfs_mp)
 
-        pickle.dump(self.cfg, open('%s.cfg.pcl' % self.model, 'w'))
+        self.dump_model(self.model_path)
+
+        pickle.dump(self.cfg, open('%s.cfg.pcl' % self.model_path, 'w'))
 
     def tag(self, data, tagger, lc):
 
@@ -216,9 +239,10 @@ class CRFSTagger:
         d = self.test_data if data is None else data
 
         # checking for a provided tagger
+        tgr = tagger
         if tagger is None:
             tgr = Tagger()
-            tgr.open(self.model)
+            tgr.open('%s.crfs' % self.model_path)
 
         # setting column name for the labels
         lc = self.glbl_col if lbl_col is None else lbl_col
@@ -234,15 +258,16 @@ class CRFSTagger:
     # a shorthand
     _xfts = extract_features
 
+
+class Model:
+    pass
+
 if __name__ == '__main__':
     print '%s Starting process...' % time.asctime()
     import ConfigParser
     cfg = ConfigParser.ConfigParser()
     cfg.readfp(open('cfg/crfstagger.cfg', 'r'))
     c = CRFSTagger(cfg)
-    # trd = parse_data('/Volumes/LocalDataHD/as714/Dropbox/playground/play_corpus_dir/train/tech.pos', ts='\t', cols='pos')
-    # tsd = parse_data('/Volumes/LocalDataHD/as714/Dropbox/playground/play_corpus_dir/train/tech.pos', ts='\t', cols='pos')
-    # print 'Completed data loading at %s' % time.asctime()
     c.train()
     print '%s Training complete.' % time.asctime()
     print '%s Testing...' % time.asctime()
