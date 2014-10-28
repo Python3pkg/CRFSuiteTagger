@@ -124,16 +124,19 @@ class FeatureTemplate:
                  *args, **kwargs):
         """
 
-        :param data:
-        :param i:
-        :param form_name:
-        :param args:
-        :param kwargs:
-        :return:
+        :param data: data sequence
+        :type data: np.array
+        :param i: index
+        :type i: int
+        :param form_name: name of column containing the form
+        :type form: str
+        :return: feature matrix
+        :rtype: list
         """
         ret = [data[i][form_name]]
 
         # joint attribute dictionary of the class and the instance
+        # needed for joint access to implemented and user-provided methods
         ad = {x: y.__func__ if type(y) is staticmethod else y
               for x, y
               in FeatureTemplate.__dict__.items()}
@@ -314,6 +317,81 @@ class FeatureTemplate:
         else:
             isnum = None
         return 'isnum[%s]=%s' % (str(rel), isnum)
+
+    @staticmethod
+    def short(data, i, rel=0, p=2, *args, **kwargs):
+        shrt = None
+        if 0 <= i + rel < len(data):
+            shrt = len(data[i + rel]['form']) < p
+        return 'short[%s]=%s' % (str(rel), shrt)
+
+    @staticmethod
+    def long(data, i, rel=0, p=12, *args, **kwargs):
+        lng = None
+        if 0 <= i + rel < len(data):
+            lng = len(data[i + rel]['form']) > p
+        return 'long[%s]=%s' % (str(rel), lng)
+
+    @staticmethod
+    def ln(data, i, rel=0, *args, **kwargs):
+        ln = None
+        if 0 <= i + rel < len(data):
+            ln = len(data[i + rel]['form'])
+        return 'ln[%s]=%s' % (str(rel), ln)
+
+    @staticmethod
+    def suff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        sufx = None
+        if 0 <= i + rel < len(data):
+            w = data[i + rel]['form']
+            maxs = len(w) - 1
+            if max_sfx and int(max_sfx) < maxs:
+                maxs = int(max_sfx)
+            for s in (w[-x:] for x in range(1, maxs + 1)):
+                if s in sfxs:
+                    sufx = s  # longest possible suffix
+        return 'sfx[%s]=%s' % (str(rel), sufx)
+
+    @staticmethod
+    def pref(data, i, rel=0, prfxs=None, max_prfx=0, *args, **kwargs):
+        prfx = None
+        if 0 <= i + rel < len(data):
+            w = data[i + rel]['form']
+            maxp = len(w)
+            if max_prfx and int(max_prfx) < maxp:
+                maxp = int(max_prfx)
+            for s in (w[:x] for x in range(1, maxp + 1)):
+                if s in prfxs:
+                    prfx = s  # longest possible suffix
+        return 'sfx[%s]=%s' % (str(rel), prfx)
+
+    @staticmethod
+    def medpref(data, i, rel=0, prfxs=None, max_prfx=0, *args, **kwargs):
+        return 'med%s' % FeatureTemplate.pref(data, i, rel, prfxs, max_prfx)
+
+    @staticmethod
+    def medsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        return 'med%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+
+    @staticmethod
+    def nounsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        return 'noun%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+
+    @staticmethod
+    def verbsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        return 'verb%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+
+    @staticmethod
+    def adjsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        return 'adj%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+
+    @staticmethod
+    def advsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        return 'adv%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+
+    @staticmethod
+    def inflsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        return 'infl%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
 
 
 def parse_range(r):

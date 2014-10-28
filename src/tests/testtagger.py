@@ -316,6 +316,38 @@ trap\tN
             rw = 'cn[%s]:%s=%s' % (rel, p, v)
             self.assertEqual(w, rw)
 
+    def test_suff(self):
+        b = {'ox', 'ick', 'across'}
+        i = 2
+        p = 5
+        for rel in [-4, -1, 0, 2]:
+            w = FeatureTemplate.suff(self.data, i, rel, b, p)
+            r = i + rel
+            v = None
+            if len(self.data) > r >= 0:
+                if self.data[r]['form'].endswith('ox'):
+                    v = 'ox'
+                elif self.data[r]['form'].endswith('ick'):
+                    v = 'ick'
+            rw = 'sfx[%s]=%s' % (rel, v)
+            self.assertEqual(w, rw)
+
+    def test_pref(self):
+        b = {'fo', 'qui', 'across'}
+        i = 2
+        p = 5
+        for rel in [-4, -1, 0, 2]:
+            w = FeatureTemplate.pref(self.data, i, rel, b, p)
+            r = i + rel
+            v = None
+            if len(self.data) > r >= 0:
+                if self.data[r]['form'].startswith('fo'):
+                    v = 'fo'
+                elif self.data[r]['form'].startswith('qui'):
+                    v = 'qui'
+            rw = 'sfx[%s]=%s' % (rel, v)
+            self.assertEqual(w, rw)
+
 
 class TestEval(TestCase):
 

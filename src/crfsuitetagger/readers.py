@@ -35,3 +35,43 @@ def read_emb(ep):
 def read_brown(bp):
     r = csv.reader(open(expanduser(bp), 'r'), delimiter='\t')
     return {x[1]: x[0] for x in r}
+
+
+def _read_afixes(ap):
+    return set(open(ap, 'r').read().split('\n'))
+
+
+def read_pref(pp):
+    return _read_afixes(pp)
+
+
+def read_suff(sp):
+    return _read_afixes(sp)
+
+
+def read_medsuff(sp):
+    return _read_afixes(sp)
+
+
+def read_medpref(sp):
+    return _read_afixes(sp)
+
+
+def read_verbsuff(sp):
+    return _read_afixes(sp)
+
+
+def read_nounsuff(sp):
+    return _read_afixes(sp)
+
+
+def read_adjsuff(sp):
+    return _read_afixes(sp)
+
+
+def read_advsuff(sp):
+    return _read_afixes(sp)
+
+
+def read_inflsuff(sp):
+    return _read_afixes(sp)
