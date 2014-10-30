@@ -261,17 +261,14 @@ class FeatureTemplate:
         :return: feature string
         :rtype str:
         """
+        cname = None
         if 0 <= i + rel < len(data):
             try:
                 cname = b[data[i + rel]['form']]
                 if p:
                     cname = cname[:int(p)]
-                    pref = p
             except KeyError:
-                cname = None
-                pref = None
-        else:
-            cname = None
+                pass
         pref = p if p else 'full'
         return 'cn[%s]:%s=%s' % (rel, pref, cname)
 
