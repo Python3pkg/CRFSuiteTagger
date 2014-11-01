@@ -20,6 +20,7 @@ import sys
 import time
 import StringIO
 import traceback
+import random as rnd
 
 from os.path import join
 from utils import export
@@ -123,8 +124,10 @@ def conll(data):
 
     td = join(os.getcwd(), 'tmp/')
 
-    fp_dp = join(td, 'chdata.%s.tmp' % time.asctime().replace(' ', ''))
-    fp_res = join(td, 'chres.%s.tmp' % time.asctime().replace(' ', ''))
+    rn = rnd.randint(1000, 1000000000000)
+
+    fp_dp = join(td, 'chdata.%s.%s.tmp' % (time.asctime().replace(' ', ''), rn))
+    fp_res = join(td, 'chres.%s.%s.tmp' % (time.asctime().replace(' ', ''), rn))
     fh_out = open(fp_res, 'w')
 
     print '%s exporting' % time.asctime()

@@ -94,7 +94,7 @@ def export(data, f, cols=None, ts='\t'):
     :param data: data
     :type data: np.array
     :param f: output file
-    :type f: file
+    :type f: FileIO or StringIO
     :param cols: column names
     :type cols: list or str
     :param ts:
