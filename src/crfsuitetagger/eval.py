@@ -90,7 +90,7 @@ class AccuracyResults(dict):
     def _to_str(self, fh):
         fh.write('--------------------------------------------------------\n')
         for k in self.keys():
-            if k == 'Total':
+            if k == self._total_name:
                 continue
             fh.write(self._pack_str(k))
         fh.write('--------------------------------------------------------\n')
@@ -133,8 +133,8 @@ def conll(data):
     print '%s exporting' % time.asctime()
     export(data,
            open(fp_dp, 'w'),
-           ['form', 'postag', 'chunktag', 'guesstag'],
-           ' ')
+           cols=['form', 'postag', 'chunktag', 'guesstag'],
+           ts=' ')
 
     cwd = join(os.getcwd(), "prl/")
     c = cmd(
