@@ -190,10 +190,10 @@ def pos(data):
     results = AccuracyResults()
 
     for t in ac.keys():
-        results[t] = {'accuracy': cc[t] / ac[t]}
+        results[t] = {'accuracy': cc[t] / ac[t], 'correct': cc[t], 'all': ac[t]}
         tcc += cc[t]
         tac += ac[t]
 
-    results['Total'] = {'accuracy': tcc / tac}
+    results['Total'] = {'accuracy': tcc / tac, 'correct': tcc, 'all': tac}
 
     return results
