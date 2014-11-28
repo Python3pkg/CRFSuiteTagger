@@ -19,6 +19,7 @@ import time
 import eval
 import pickle
 import readers
+import shutil
 import numpy as np
 
 from ftex import FeatureTemplate
@@ -177,6 +178,8 @@ class CRFSTagger:
         md.cfg = clipcfg(self.cfg)
         md.resources = self.resources
         pickle.dump(md, open(fp, 'w'))
+        if fp != self.model_path:
+            shutil.copy('%s.crfs' % self.model_path, '%s.crfs' % fp)
 
     def dump_ft_template(self, fp):
         pickle.dump(self.ft_tmpl, fp)
@@ -260,17 +263,26 @@ class CRFSTagger:
 
 
 class Model:
-    pass
+
+    def __init__(self):
+        self.crfs_model = None
+        self.resources = {}
+        self.cfg = None
 
 if __name__ == '__main__':
     print '%s Starting process...' % time.asctime()
     import ConfigParser
     cfg = ConfigParser.ConfigParser()
     cfg.readfp(open('cfg/crfstagger.cfg', 'r'))
-    c = CRFSTagger(cfg)
-    c.train()
-    print '%s Training complete.' % time.asctime()
-    print '%s Testing...' % time.asctime()
-    r, d = c.test()
+    # c = CRFSTagger(cfg)
+    # c.train()
+    # print '%s Training complete.' % time.asctime()
+    # print '%s Testing...' % time.asctime()
+    # r, d = c.test()
+    # print r
+    # print time.asctime()
+    # c.dump_model('/home/sasho/testmodel')
+    data = parse_tsv('/home/sasho/tmp/data3/harvey+uni.data', cols='pos', ts='\t')
+    c = CRFSTagger(mp='/home/sasho/testmodel')
+    r, d = c.test(data=data)
     print r
-    print time.asctime()
