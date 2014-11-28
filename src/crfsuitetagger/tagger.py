@@ -222,7 +222,13 @@ class CRFSTagger:
 
         pickle.dump(self.cfg, open('%s.cfg.pcl' % self.model_path, 'w'))
 
-    def tag(self, data, tagger, lc):
+    def tag(self, data, lc, tagger=None):
+
+        tgr = tagger
+
+        if tgr is None:
+            tgr = Tagger()
+            tgr.open('%s.crfs' % self.model_path)
 
         # extracting features
         X = self.extract_features(data)
@@ -230,7 +236,7 @@ class CRFSTagger:
         # tagging sentences
         idx = 0
         for fts in X:
-            for l in tagger.tag(fts):
+            for l in tgr.tag(fts):
                 data[idx][lc] = l
                 idx += 1
 
@@ -241,17 +247,11 @@ class CRFSTagger:
         # use provided data or testing data from config file
         d = self.test_data if data is None else data
 
-        # checking for a provided tagger
-        tgr = tagger
-        if tagger is None:
-            tgr = Tagger()
-            tgr.open('%s.crfs' % self.model_path)
-
         # setting column name for the labels
         lc = self.glbl_col if lbl_col is None else lbl_col
 
         # tagging
-        self.tag(d, tgr, lc)
+        self.tag(d, lc, tagger=tagger)
 
         #evaluating
         r = self.eval_func(d)
@@ -274,14 +274,14 @@ if __name__ == '__main__':
     import ConfigParser
     cfg = ConfigParser.ConfigParser()
     cfg.readfp(open('cfg/crfstagger.cfg', 'r'))
-    # c = CRFSTagger(cfg)
-    # c.train()
-    # print '%s Training complete.' % time.asctime()
-    # print '%s Testing...' % time.asctime()
-    # r, d = c.test()
-    # print r
-    # print time.asctime()
-    # c.dump_model('/home/sasho/testmodel')
+    c = CRFSTagger(cfg)
+    c.train()
+    print '%s Training complete.' % time.asctime()
+    print '%s Testing...' % time.asctime()
+    r, d = c.test()
+    print r
+    print time.asctime()
+    c.dump_model('/home/sasho/testmodel')
     data = parse_tsv('/home/sasho/tmp/data3/harvey+uni.data', cols='pos', ts='\t')
     c = CRFSTagger(mp='/home/sasho/testmodel')
     r, d = c.test(data=data)
