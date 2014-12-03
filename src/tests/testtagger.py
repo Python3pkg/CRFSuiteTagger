@@ -66,10 +66,10 @@ trap\tN
     def test_count_records(self):
         # in case the string is changed
         rc = len([x for x in self.data_str.strip().split('\n') if x.strip()])
-        self.assertEqual(count_records(self.dp), rc)
+        self.assertEqual(count_records(open(self.dp, 'r')), rc)
         fp = 'tmp/count.%s.tmp' % time.asctime()
         open(fp, 'w').write('%s\n\n' % self.data_str)
-        self.assertEqual(count_records(fp), rc)
+        self.assertEqual(count_records(open(fp, 'r')), rc)
         os.remove(fp)
 
     def test_export(self):

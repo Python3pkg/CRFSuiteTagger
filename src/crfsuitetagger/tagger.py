@@ -222,7 +222,41 @@ class CRFSTagger:
 
         pickle.dump(self.cfg, open('%s.cfg.pcl' % self.model_path, 'w'))
 
-    def tag(self, data, lc, tagger=None):
+    def tag(
+            self,
+            data,
+            lc='guesstag',
+            tagger=None,
+            input_type='recarray',
+            cols='pos',
+            ts='\t'
+    ):
+        """Tags data in the following formats: text, TSV, and numpy.recarray.
+
+        :param data: data
+        :type data: str or recarray
+        :param lc: label column
+        :type lc: str
+        :param tagger: CRFS tagger
+        :type tagger: Tagger
+        :param input_type:
+        :type input_type: ['recarray', 'txt', 'tsv']
+        :param cols: TSV column names
+        :type cols: str or list of str
+        :param ts: tab separator for TSV
+        :type ts: str
+        :return: tagged data
+        :rtype: recarray
+        """
+
+        if input_type == 'recarray':
+            d = data
+        elif input_type == 'txt':
+            d = parse_tsv(s=data.replace(' ', '\n'), cols=cols, ts=ts)
+        elif input_type == 'tsv':
+            d = parse_tsv(s=data, cols=cols, ts=ts)
+        else:
+            raise ValueError('Invalid input type.')
 
         tgr = tagger
 
@@ -231,16 +265,16 @@ class CRFSTagger:
             tgr.open('%s.crfs' % self.model_path)
 
         # extracting features
-        X = self.extract_features(data)
+        X = self.extract_features(d)
 
         # tagging sentences
         idx = 0
         for fts in X:
             for l in tgr.tag(fts):
-                data[idx][lc] = l
+                d[idx][lc] = l
                 idx += 1
 
-        return data
+        return d
 
     def test(self, data=None, tagger=None, lbl_col=None):
 
@@ -251,7 +285,7 @@ class CRFSTagger:
         lc = self.glbl_col if lbl_col is None else lbl_col
 
         # tagging
-        self.tag(d, lc, tagger=tagger)
+        d = self.tag(d, lc, tagger=tagger)
 
         #evaluating
         r = self.eval_func(d)
@@ -284,5 +318,5 @@ if __name__ == '__main__':
     c.dump_model('/home/sasho/testmodel')
     data = parse_tsv('/home/sasho/tmp/data3/harvey+uni.data', cols='pos', ts='\t')
     c = CRFSTagger(mp='/home/sasho/testmodel')
-    r, d = c.test(data=data)
-    print r
+    d = c.tag('This is shit !\nFor real, this is shit !', 'guesstag', input_type='txt', cols='pos')
+    print d

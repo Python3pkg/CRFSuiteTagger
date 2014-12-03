@@ -21,7 +21,7 @@ import ConfigParser
 import numpy as np
 
 
-def parse_tsv(fp, cols, ts='\t'):
+def parse_tsv(fp=None, cols=None, ts='\t', s=None):
     """Parses a file of TSV sequences separated by an empty line and produces
     a numpy recarray. The `cols` parameter can use a predefined set of field
     names or it can be user specific. The fields may be arbitrary in case new
@@ -41,6 +41,8 @@ def parse_tsv(fp, cols, ts='\t'):
     :type cols: str or tuple
     :param ts: tab separator
     :type ts: str
+    :param s: TSV string
+    :type s: str
     :return: parsed data
     :rtype: np.array
     """
@@ -48,7 +50,17 @@ def parse_tsv(fp, cols, ts='\t'):
     ct = {'pos': ('form', 'postag'), 'chunk': ('form', 'postag', 'chunktag')}
     c = ct[cols] if type(cols) is str else cols
 
-    rc = count_records(fp)
+    if s is not None:
+        stream = StringIO.StringIO()
+        stream.write(s)
+        stream.seek(0)
+    elif fp is not None:
+        stream = open(fp, 'r')
+    else:
+        raise ValueError('fp and s values are None. At least one of them must '
+                         'be initialised.')
+
+    rc = count_records(stream)
     nc = len(c) - 1
     dt = 'a60,{},a10,int32'.format(','.join('a10' for _ in range(nc)))
 
@@ -56,36 +68,41 @@ def parse_tsv(fp, cols, ts='\t'):
 
     names = c + ('guesstag', 'eos')
     data.dtype.names = names
-    with open(fp, 'r') as fh:
-        idx = 0
-        start = 0
-        for line in fh:
-            if line.strip() == '':
-                data[start]['eos'] = idx
-                start = idx
-                continue
-            # Note: len(c) is there to handle input data with more columns than
-            # declared in the `cols` parameter.
-            data[idx] = tuple(line.strip().split(ts)[:len(c)]) + ('', -1)
-            idx += 1
-        if start < len(data):
+
+    idx = 0
+    start = 0
+    for line in stream.readlines():
+        if line.strip() == '':
             data[start]['eos'] = idx
+            start = idx
+            continue
+        # Note: len(c) is there to handle input data with more columns than
+        # declared in the `cols` parameter.
+        line_cols = line.strip().split(ts)
+        empty_cols = ()
+        if len(names) > len(c) + 1:
+            empty_cols = \
+                tuple('' for _ in range(len(names) - len(c) - 1))
+        data[idx] = tuple(line_cols[:len(c)]) + empty_cols + (-1,)
+        idx += 1
+    if start < len(data):
+        data[start]['eos'] = idx
     return data
 
 
-def count_records(fp):
+def count_records(f):
     """Counts the number of empty lines in a file.
 
-    :param fp: file path
-    :type fp: str
+    :param f: file path
+    :type f: FileIO or StringIO
     :return: number of empty lines
     :rtype: int
     """
     c = 0
-    with open(fp, 'r') as fh:
-        for l in fh:
-            if l.strip() != '':
-                c += 1
+    for l in f.readlines():
+        if l.strip() != '':
+            c += 1
+    f.seek(0)
     return c
 
 
@@ -95,8 +112,8 @@ def export(data, f, cols=None, ts='\t'):
 
     :param data: data
     :type data: np.array
-    :param f: output file
-    :type f: FileIO or StringIO
+    :param f: output stream
+    :type f: FileIO or StringIO.StringIO
     :param cols: column names
     :type cols: list or str
     :param ts:
