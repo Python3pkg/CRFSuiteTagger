@@ -348,6 +348,46 @@ trap\tN
             rw = 'sfx[%s]=%s' % (rel, v)
             self.assertEqual(w, rw)
 
+    def test_nrange(self):
+        rng = nrange(0, 10, 3)
+        self.assertSequenceEqual(rng, [0, 3, 6])
+        rng = nrange(0, 11, 3)
+        self.assertSequenceEqual(rng, [0, 3, 6, 9])
+        rng = nrange(0, 12, 3)
+        self.assertSequenceEqual(rng, [0, 3, 6, 9])
+        rng = nrange(0, 13, 3)
+        self.assertSequenceEqual(rng, [0, 3, 6, 9])
+        rng = nrange(0, 14, 3)
+        self.assertSequenceEqual(rng, [0, 3, 6, 9, 12])
+
+    def test_parse_ng_range(self):
+        nrng = parse_ng_range(range(10), 3)
+        self.assertSequenceEqual(nrng, [0, 3, 6])
+        nrng = parse_ng_range(range(10) + range(12, 15), 3)
+        self.assertSequenceEqual(nrng, [0, 3, 6, 12])
+        nrng = parse_ng_range(range(10) + range(12, 16) + range(20, 22), 3)
+        self.assertSequenceEqual(nrng, [0, 3, 6, 12])
+
+    def test_nword(self):
+        ft = FeatureTemplate.nword(self.data[:8], 3, 2, 2)
+        self.assertEqual(ft, '2w[2]=theriver')
+        ft = FeatureTemplate.nword(self.data[:8], 5, 2, 2)
+        self.assertEqual(ft, '2w[2]=None')
+        ft = FeatureTemplate.nword(self.data[:8], 5, -1, 2)
+        self.assertEqual(ft, '2w[-1]=acrossthe')
+        ft = FeatureTemplate.nword(self.data[:8], 1, -2, 3)
+        self.assertEqual(ft, '3w[-2]=None')
+
+    def test_npos(self):
+        ft = FeatureTemplate.npos(self.data[:8], 3, 2, 2)
+        self.assertEqual(ft, '2p[2]=DN')
+        ft = FeatureTemplate.npos(self.data[:8], 5, 2, 2)
+        self.assertEqual(ft, '2p[2]=None')
+        ft = FeatureTemplate.npos(self.data[:8], 5, -1, 2)
+        self.assertEqual(ft, '2p[-1]=RD')
+        ft = FeatureTemplate.npos(self.data[:8], 1, -2, 3)
+        self.assertEqual(ft, '3p[-2]=None')
+
 
 class TestEval(TestCase):
 

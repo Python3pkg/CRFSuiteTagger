@@ -209,6 +209,14 @@ class FeatureTemplate:
             for j in vc:
                 yield (fn, i, j, e)
 
+    @staticmethod
+    def ngram_win(fn, fw, fp, *args, **kwargs):
+        assert len(fp) > 0, 'N-gram features require N to be set.'
+        n = int(fp[0])
+        prms = tuple() if len(fp) == 1 else tuple(fp)
+        nfw = parse_ng_range(fw, n)
+        for i in nfw:
+            yield (fn, i) + prms
 
     @staticmethod
     def word(data, i, rel=0, *args, **kwargs):
@@ -219,6 +227,16 @@ class FeatureTemplate:
         return 'w[%s]=%s' % (rel, form)
 
     @staticmethod
+    def nword(data, i, rel=0, n=None):
+        if 0 <= i + rel and i + rel + n - 1 < len(data):
+            s = i + rel
+            e = i + rel + n
+            forms = ''.join([data[x]['form'] for x in range(s, e)])
+        else:
+            forms = None
+        return '%sw[%s]=%s' % (n, rel, forms)
+
+    @staticmethod
     def pos(data, i, rel=0, *args, **kwargs):
         if 0 <= i + rel < len(data):
             postag = data[i + rel]['postag']
@@ -227,12 +245,32 @@ class FeatureTemplate:
         return 'p[%s]=%s' % (rel, postag)
 
     @staticmethod
+    def npos(data, i, rel=0, n=None):
+        if 0 <= i + rel and i + rel + n - 1 < len(data):
+            s = i + rel
+            e = i + rel + n
+            postags = ''.join([data[x]['postag'] for x in range(s, e)])
+        else:
+            postags = None
+        return '%sp[%s]=%s' % (n, rel, postags)
+
+    @staticmethod
     def chunk(data, i, rel=0, *args, **kwargs):
         if 0 <= i + rel < len(data):
             chunktag = data[i + rel]['chunktag']
         else:
             chunktag = None
         return 'ch[%s]=%s' % (rel, chunktag)
+
+    @staticmethod
+    def nchunk(data, i, rel=0, n=None):
+        if 0 <= i + rel and i + rel + n - 1 < len(data):
+            s = i + rel
+            e = i + rel + n
+            chunktags = ''.join([data[x]['chunktag'] for x in range(s, e)])
+        else:
+            chunktags = None
+        return '%sp[%s]=%s' % (n, rel, chunktags)
 
     @staticmethod
     def can(data, i, rel=0, *args, **kwargs):
@@ -414,3 +452,32 @@ def parse_range(r):
             rng.append(int(rs))
 
     return rng
+
+
+def nrange(start, stop, step):
+    idx = start
+    rng = []
+    while idx + step <= stop + 1:
+        rng.append(idx)
+        idx += step
+    return rng
+
+
+def parse_ng_range(fw, n):
+    subranges = []
+    cur = None
+    rng = []
+    for i in fw:
+        if cur == None or cur + 1 == i:
+            rng.append(i)
+            cur = i
+        else:
+            subranges.append(rng)
+            rng = [i]
+            cur = i
+    subranges.append(rng)
+    nrng = []
+    for sr in subranges:
+        for i in nrange(sr[0], sr[-1], n):
+            nrng.append(i)
+    return nrng
