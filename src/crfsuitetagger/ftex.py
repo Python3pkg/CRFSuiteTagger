@@ -211,6 +211,12 @@ class FeatureTemplate:
 
     @staticmethod
     def ngram_win(fn, fw, fp, *args, **kwargs):
+        """Yields the starting indices of all full n-grams from left to right.
+
+        :param fn: function name
+        :param fw: n-grams window
+        :param fp: feature params (position 0 reserved for n in n-grams)
+        """
         assert len(fp) > 0, 'N-gram features require N to be set.'
         n = int(fp[0])
         prms = tuple() if len(fp) == 1 else tuple(fp)
@@ -455,6 +461,20 @@ def parse_range(r):
 
 
 def nrange(start, stop, step):
+    """Returns the indices of n-grams in a context window. Works much like
+    range(start, stop, step), but the stop index is inclusive, and indices are
+    included only if the step can fit between the candidate index and the stop
+    index.
+
+    :param start: starting index
+    :type start: int
+    :param stop: stop index
+    :type stop: int
+    :param step: n-gram length
+    :type step: int
+    :return: n-gram indices from left to right
+    :rtype: list of int
+    """
     idx = start
     rng = []
     while idx + step <= stop + 1:
@@ -464,6 +484,16 @@ def nrange(start, stop, step):
 
 
 def parse_ng_range(fw, n):
+    """Transforms context window index list to a context window n-gram index
+    list.
+
+    :param fw: context window
+    :type fw: list of int
+    :param n: n in n-grams
+    :type n: int
+    :return: n-gram indices
+    :rtype: list of int
+    """
     subranges = []
     cur = None
     rng = []
