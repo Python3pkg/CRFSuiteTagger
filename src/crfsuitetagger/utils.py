@@ -62,7 +62,8 @@ def parse_tsv(fp=None, cols=None, ts='\t', s=None):
 
     rc = count_records(stream)
     nc = len(c) - 1
-    dt = 'a60,{},a10,int32'.format(','.join('a10' for _ in range(nc)))
+    cs = ','.join('a10' for _ in range(nc))  # col strings
+    dt = 'a60,{}a10,int32'.format('%s,' % cs if cs else '')
 
     data = np.zeros(rc, dtype=dt)
 
@@ -120,8 +121,11 @@ def export(data, f, cols=None, ts='\t'):
     """
 
     # column templates
-    ct = {'pos': ['form', 'postag', 'guesstag'],
-                 'chunk': ['form', 'postag', 'chunktag', 'guesstag']}
+    ct = {
+        'pos': ['form', 'postag', 'guesstag'],
+        'chunk': ['form', 'postag', 'chunktag', 'guesstag'],
+        'ne': ['form', 'postag', 'chunktag', 'netag', 'guesstag']
+    }
 
     # all columns in the data
     dt = data.dtype.names
@@ -194,7 +198,7 @@ def expandpaths(cfg):
             ov = cfg.get(sec, opt)
 
             # does it look like it needs expanding
-            if re.match('^~/(?:[^\/]+/)*(?:[^\/]+)?', ov):
+            if ov and re.match('^~/(?:[^\/]+/)*(?:[^\/]+)?', ov):
                 cfg.set(sec, opt, os.path.expanduser(ov))
 
 
