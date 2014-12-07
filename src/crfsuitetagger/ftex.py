@@ -59,7 +59,12 @@ class FeatureTemplate:
             wf = win_fnx + [self.emb_win]
             self.win_fnx = {x.__name__: x for x in wf}
         else:
-            self.win_fnx = {'emb': FeatureTemplate.emb_win}
+            self.win_fnx = {
+                'emb': FeatureTemplate.emb_win,
+                'nword': FeatureTemplate.ngram_win,
+                'npos': FeatureTemplate.ngram_win,
+                'nchunk': FeatureTemplate.ngram_win
+            }
 
         if fnx:
             for f in fnx:
@@ -219,10 +224,10 @@ class FeatureTemplate:
         """
         assert len(fp) > 0, 'N-gram features require N to be set.'
         n = int(fp[0])
-        prms = tuple() if len(fp) == 1 else tuple(fp)
+        prms = tuple() if len(fp) == 1 else tuple(fp[1:])
         nfw = parse_ng_range(fw, n)
         for i in nfw:
-            yield (fn, i) + prms
+            yield (fn, i, n) + prms
 
     @staticmethod
     def word(data, i, rel=0, *args, **kwargs):
