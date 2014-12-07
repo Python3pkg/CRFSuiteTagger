@@ -111,13 +111,19 @@ class CRFSTagger:
 
     def load_data(self, cols=None):
         c = cols if cols else self.cols
-        if 'train' in self.cfg_tag:
-            self.train_data = parse_tsv(self.cfg_tag['train'],
-                                        cols=c,
-                                        ts=self.ts)
+        if 'train' in self.cfg_tag and self.cfg_tag['train']:
+            self.train_data = parse_tsv(
+                self.cfg_tag['train'],
+                cols=c,
+                ts=self.ts
+            )
 
-        if 'test' in self.cfg_tag:
-            self.test_data = parse_tsv(self.cfg_tag['test'], cols=c, ts=self.ts)
+        if 'test' in self.cfg_tag and self.cfg_tag['test']:
+            self.test_data = parse_tsv(
+                fp=self.cfg_tag['test'],
+                cols=c,
+                ts=self.ts
+            )
 
     def extract_features(self, d):
 
