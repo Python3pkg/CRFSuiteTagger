@@ -47,7 +47,11 @@ def parse_tsv(fp=None, cols=None, ts='\t', s=None):
     :rtype: np.array
     """
 
-    ct = {'pos': ('form', 'postag'), 'chunk': ('form', 'postag', 'chunktag')}
+    ct = {
+        'pos': ('form', 'postag'),
+        'chunk': ('form', 'postag', 'chunktag'),
+        'ne': ('form', 'postag', 'chunktag', 'netag', 'guesstag')
+    }
     c = ct[cols] if type(cols) is str else cols
 
     if s is not None:
