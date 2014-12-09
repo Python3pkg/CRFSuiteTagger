@@ -22,6 +22,8 @@ import readers
 import shutil
 import numpy as np
 
+from os import makedirs
+from os.path import dirname, expanduser
 from ftex import FeatureTemplate
 from utils import parse_tsv, gsequences, expandpaths, clipcfg
 from pycrfsuite import Trainer, Tagger
@@ -183,9 +185,19 @@ class CRFSTagger:
         md = Model()
         md.cfg = clipcfg(self.cfg)
         md.resources = self.resources
+        try:
+            makedirs(dirname(fp))
+        except OSError:
+            pass
         pickle.dump(md, open(fp, 'w'))
         if fp != self.model_path:
-            shutil.copy('%s.crfs' % self.model_path, '%s.crfs' % fp)
+            src = '%s.crfs' % self.model_path
+            trg = '%s.crfs' % fp
+            try:
+                makedirs(dirname(trg))
+            except OSError:
+                pass
+            shutil.copy(src, trg)
 
     def dump_ft_template(self, fp):
         pickle.dump(self.ft_tmpl, fp)
@@ -321,8 +333,8 @@ if __name__ == '__main__':
     r, d = c.test()
     print r
     print time.asctime()
-    c.dump_model('/home/sasho/testmodel')
-    data = parse_tsv('/home/sasho/tmp/data3/harvey+uni.data', cols='pos', ts='\t')
-    c = CRFSTagger(mp='/home/sasho/testmodel')
+    c.dump_model(expanduser('~/testmodel'))
+    data = parse_tsv(expanduser('~/tmp/data3/harvey+uni.data', cols='pos', ts='\t'))
+    c = CRFSTagger(mp='~/testmodel')
     d = c.tag('This is shit !\nFor real, this is shit !', 'guesstag', input_type='txt', cols='pos')
     print d
