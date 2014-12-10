@@ -234,6 +234,10 @@ class CRFSTagger:
 
         print '%s Training...' % time.asctime()
         crfs_mp = '%s.crfs' % self.model_path
+        try:
+            makedirs(dirname(crfs_mp))
+        except OSError:
+            pass
         trainer.train(crfs_mp)
 
         self.dump_model(self.model_path)
