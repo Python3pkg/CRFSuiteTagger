@@ -484,7 +484,7 @@ def nrange(start, stop, step):
     rng = []
     while idx + step <= stop + 1:
         rng.append(idx)
-        idx += step
+        idx += 1
     return rng
 
 
