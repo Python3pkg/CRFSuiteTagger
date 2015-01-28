@@ -324,21 +324,3 @@ class Model:
         self.crfs_model = None
         self.resources = {}
         self.cfg = None
-
-if __name__ == '__main__':
-    print '%s Starting process...' % time.asctime()
-    import ConfigParser
-    cfg = ConfigParser.ConfigParser()
-    cfg.readfp(open('cfg/crfstagger.cfg', 'r'))
-    c = CRFSTagger(cfg)
-    c.train()
-    print '%s Training complete.' % time.asctime()
-    print '%s Testing...' % time.asctime()
-    r, d = c.test()
-    print r
-    print time.asctime()
-    c.dump_model(expanduser('~/testmodel'))
-    data = parse_tsv(expanduser('~/tmp/data3/harvey+uni.data', cols='pos', ts='\t'))
-    c = CRFSTagger(mp='~/testmodel')
-    d = c.tag('This is shit !\nFor real, this is shit !', 'guesstag', input_type='txt', cols='pos')
-    print d
