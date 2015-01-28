@@ -16,6 +16,7 @@ __author__ = 'Aleksandar Savkov'
 
 
 # Use this script to download the CoNLL-2000 data files in this directory.
+# Make sure you run this script from the directory it was placed in.
 
 import os, gzip, wget
 
@@ -26,7 +27,15 @@ def extract(fp):
         fh.write(f.read())
     f.close()
 
-os.makedirs('tmp')
+try:
+    os.makedirs('../tmp')
+except OSError:
+    pass
+
+try:
+    os.makedirs('thesauri')
+except OSError:
+    pass
 
 train_url = 'http://www.cnts.ua.ac.be/conll2000/chunking/train.txt.gz'
 test_url = 'http://www.cnts.ua.ac.be/conll2000/chunking/test.txt.gz'
@@ -44,15 +53,18 @@ stanford_clusters_url = \
 train = wget.download(train_url)
 test = wget.download(test_url)
 
+# os.remove('thesauri/brown-rcv1.clean.tokenized-CoNLL03.txt-c1000-freq1.txt')
 # turian = wget.download(
 #     turian_url,
 #     out='thesauri/brown-rcv1.clean.tokenized-CoNLL03.txt-c1000-freq1.txt'
 # )
+# os.remove('thesauri/embeddings-scaled.EMBEDDING_SIZE=50.txt')
 # turian_emb = wget.download(
 #     turian_emb_url,
 #     out='thesauri/embeddings-scaled.EMBEDDING_SIZE=50.txt'
 # )
 
+os.remove('thesauri/egw4-reut.512.clusters')
 stanford = wget.download(
     stanford_clusters_url,
     out='thesauri/egw4-reut.512.clusters'
