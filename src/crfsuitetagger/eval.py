@@ -106,13 +106,15 @@ class AccuracyResults(dict):
         return self.__str__()
 
 
-def conll(data):
+def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
     """Evaluates chunking f1-score provided with data with the following fields:
     form, postag, chunktag, guesstag
 
     Currently uses the CoNLL-2000 evaluation script to make the estimate.
 
     :param data: np.array
+    :param cols: columns to be used for the evaluation
+    :type cols: str or tuple or list
     :return: f1-score estimate
     :rtype: AccuracyResults
     """
@@ -133,7 +135,7 @@ def conll(data):
     print '%s exporting' % time.asctime()
     export(data,
            open(fp_dp, 'w'),
-           cols=['form', 'postag', 'chunktag', 'guesstag'],
+           cols=cols,
            ts=' ')
 
     cwd = os.getcwd()
@@ -201,6 +203,18 @@ def pos(data):
     results['Total'] = {'accuracy': tcc / tac, 'correct': tcc, 'all': tac}
 
     return results
+
+
+def ner(data, cols=('form', 'postag', 'netag', 'guesstag')):
+    """Evaluates F1-score for NER using the CoNLL-2000 script.
+
+    :param data: np.array
+    :param cols: columns to be used for the evaluation
+    :type cols: str or tuple or list
+    :return: f1-score estimate
+    :rtype: AccuracyResults
+    """
+    return conll(data, cols=cols)
 
 conll_script = '''#!/usr/bin/perl -w
 # conlleval: evaluate result of processing CoNLL-2000 shared task

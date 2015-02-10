@@ -50,7 +50,7 @@ def parse_tsv(fp=None, cols=None, ts='\t', s=None):
     ct = {
         'pos': ('form', 'postag'),
         'chunk': ('form', 'postag', 'chunktag'),
-        'ne': ('form', 'postag', 'chunktag', 'netag', 'guesstag')
+        'ne': ('form', 'postag', 'chunktag', 'netag')
     }
     c = ct[cols] if type(cols) is str else cols
 
@@ -135,7 +135,8 @@ def export(data, f, cols=None, ts='\t'):
     dt = data.dtype.names
 
     # columns to be exported
-    c = list(dt) if cols is None else ct[cols] if type(cols) is str else cols
+    c = (list(dt) if cols is None
+         else ct[cols] if type(cols) is str else list(cols))
 
     rc = len(data)
     d = data[c]
