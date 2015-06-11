@@ -132,7 +132,6 @@ def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
     fp_res = join(td, 'chres.%s.%s.tmp' % (time.asctime().replace(' ', ''), rn))
     fh_out = open(fp_res, 'w')
 
-    print '%s exporting' % time.asctime()
     export(data,
            open(fp_dp, 'w'),
            cols=cols,

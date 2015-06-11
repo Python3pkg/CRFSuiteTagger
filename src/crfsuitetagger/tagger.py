@@ -144,8 +144,6 @@ class CRFSTagger:
         # sequence start and end indices
         s, e = 0, 0
 
-        print '%s Processing sequences...' % time.asctime()
-
         sc = 0
 
         # extracting features from sequences
@@ -168,9 +166,6 @@ class CRFSTagger:
             s = e
 
             sc += 1
-
-            if sc % 1000 == 0:
-                print '%s processed sequences' % sc
 
             # yielding a feature sequence
             yield ft_seq
@@ -216,12 +211,9 @@ class CRFSTagger:
         lc = self.lbl_col if lbl_col is None else lbl_col
 
         # extract features or use provided
-        import time
-        print '%s Extracting features...' % time.asctime()
         X = self._xfts(d) if fts is None else fts
 
         # extract labels or use provided
-        print '%s extracting labels' % time.asctime()
         y = gsequences(d, [lc]) if ls is None else ls
 
         trainer = Trainer(verbose=self.verbose)
@@ -232,7 +224,6 @@ class CRFSTagger:
         for x_seq, y_seq in zip(X, y):
             trainer.append(x_seq, [l[0] for l in y_seq])
 
-        print '%s Training...' % time.asctime()
         crfs_mp = '%s.crfs' % self.model_path
         try:
             makedirs(dirname(crfs_mp))
