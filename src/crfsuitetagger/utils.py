@@ -15,6 +15,7 @@
 __author__ = 'Aleksandar Savkov'
 
 import re
+import copy
 import os.path
 import StringIO
 import ConfigParser
@@ -194,6 +195,131 @@ def gsequences(data, cols=None):
 
         # returning a sequence
         yield seq[c]
+
+
+def count_sequences(data):
+    """Counts the number of sequences in the data.
+
+    :param data: data
+    :type data: np.array
+    :return: number of sequences
+    :rtype: int
+    """
+    # sequence count
+    c = 0
+
+    # sequence start and end indices
+    s, e = 0, 0
+
+    # extracting features from sequences
+    while 0 <= s < len(data):
+
+        # index of the end of a sequence is recorded at the beginning
+        e = data[s]['eos']
+
+        # moving the start index
+        s = e
+
+        # counting up
+        c += 1
+
+    return c
+
+
+def set_sequence_start_idx(data, idx):
+    """Sets all sentence indices relative to a starting value provided in `idx`.
+
+    :param data: data
+    :type data: np.array
+    :param idx: relative starting index
+    :type idx: int
+    """
+
+    assert idx >= 0, 'Negative indices are not supported.'
+
+    # get the start of the second sentence (first eos index)
+    eos_idx = 1
+    while eos_idx < len(data) and data[eos_idx]['eos'] < 0:
+        eos_idx += 1
+
+    # index difference
+    diff = idx + eos_idx - data[0]['eos']
+
+    for i in range(len(data)):
+        if data[i]['eos'] > 0:
+            data[i]['eos'] += diff
+
+
+def weighed_split(data, proportion=0.9):
+    """Splits the data into two given a proportion.
+
+    :param data: data
+    :type data: np.array
+    :param proportion: split proportion
+    :type proportion: float
+    :return: data_split1, data_split2
+    :rtype: np.array, np.array
+    """
+
+    # sequence start and end indices
+    s, e = 0, 0
+
+    # ceiling
+    ceil = int(proportion * len(data))
+
+    # last sentence
+    sh = 0
+
+    # extracting features from sequences
+    while 0 <= s < ceil:
+
+        # index of the end of a sequence is recorded at the beginning
+        e = data[s]['eos']
+
+        # keeping history
+        sh = s
+
+        # moving the start index
+        s = e
+
+    data_1 = data[:sh]
+    data_2 = data[sh:]
+
+    set_sequence_start_idx(data_2, 0)
+
+    return data_1, data_2
+
+
+def cv_splits(data, k=10):
+    """ Yields `k` cross-validation splits of `data`.
+
+    :param data: data
+    :type data: np.array
+    :param k: folds
+    :type k: int
+    """
+
+    assert k > 2, 'Folds value k too small (%s). Should be at least 3.' % k
+
+    # we need a copy of the data
+    d = copy.deepcopy(data)
+    # calculate proportion
+    prop = (float(k) - 1) / float(k)
+
+    # yield splits and remake the data
+    for _ in range(k):
+        # split data
+        trd, ted = weighed_split(d, proportion=prop)
+        # make copies
+        d1 = copy.deepcopy(trd)
+        d2 = copy.deepcopy(ted)
+        # make new data with small split in the beginning
+        # big split indices need to start after small split
+        set_sequence_start_idx(d1, idx=len(d2))
+        # concatenate the data
+        d = np.concatenate((d2, d1))
+
+        yield trd, ted
 
 
 def expandpaths(cfg):

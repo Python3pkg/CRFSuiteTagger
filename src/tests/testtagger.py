@@ -17,6 +17,7 @@ __author__ = 'Aleksandar Savkov'
 import os
 import time
 import StringIO
+import copy
 from unittest import TestCase
 
 from crfsuitetagger.ftex import *
@@ -45,7 +46,11 @@ trap\tN
 .\t.'''
         self.dp = 'tmp/data.%s.tmp' % time.asctime()
         open(self.dp, 'w').write(self.data_str)
+        self.dp_large = 'tmp/data_large.%s.tmp' % time.asctime()
+        with open(self.dp_large, 'w') as fh:
+            fh.write('\n\n'. join([self.data_str + '\n.\t.' for _ in range(10)]))
         self.data = parse_tsv(self.dp, ('form', 'postag'))
+        self.data_large = parse_tsv(self.dp_large, ('form', 'postag'))
 
     def tearDown(self):
         os.remove(self.dp)
@@ -92,6 +97,72 @@ trap\tN
         mgs = [list(mock_data[:8]), list(mock_data[8:])]
 
         self.assertSequenceEqual(gs, mgs)
+
+    def test_count(self):
+        self.assertEqual(count_sequences(self.data), 2)
+        self.assertEqual(count_sequences(self.data_large), 20)
+
+    def test_weighted_split(self):
+        trd, ted = weighed_split(self.data_large, proportion=0.89)
+        self.assertEqual(len(trd), 144)
+        self.assertEqual(len(ted), 26)
+        self.assertEqual(ted[0]['eos'], 9)
+        self.assertEqual(trd[0]['eos'], 8)
+        s = 0
+        sh = 0
+        while s < len(trd):
+            s = trd[s]['eos']
+            self.assertNotEqual(s, sh)
+            sh = s
+        self.assertEqual(s, len(trd))
+        s = 0
+        sh = 0
+        while s < len(ted):
+            s = ted[s]['eos']
+            self.assertNotEqual(s, sh)
+            sh = s
+        self.assertEqual(s, len(ted))
+
+    def test_set_seq_start_idx(self):
+        d = copy.deepcopy(self.data_large)
+        eos_idx = 1
+        while d[eos_idx]['eos'] < 0:
+            eos_idx += 1
+        idx = 10
+        set_sequence_start_idx(d, idx)
+        s = 0
+        sh = 0
+        while s < len(d):
+            s = d[s]['eos'] - idx
+            self.assertNotEqual(s, sh)
+            sh = s
+        self.assertEqual(s, len(d))
+        self.assertEqual(d[0]['eos'], eos_idx + idx)
+        idx = 15
+        set_sequence_start_idx(d, idx)
+        s = 0
+        sh = 0
+        while s < len(d):
+            s = d[s]['eos'] - idx
+            self.assertNotEqual(s, sh)
+            sh = s
+        self.assertEqual(s, len(d))
+        self.assertEqual(d[0]['eos'], eos_idx + idx)
+        idx = 0
+        set_sequence_start_idx(d, idx)
+        s = 0
+        sh = 0
+        while s < len(d):
+            s = d[s]['eos'] - idx
+            self.assertNotEqual(s, sh)
+            sh = s
+        self.assertEqual(s, len(d))
+        self.assertEqual(d[0]['eos'], eos_idx + idx)
+        with self.assertRaises(AssertionError):
+            set_sequence_start_idx(d, -10)
+
+    def test_cv_splits(self):
+        pass
 
 
 class TestFtEx(TestCase):
@@ -350,23 +421,23 @@ trap\tN
 
     def test_nrange(self):
         rng = nrange(0, 10, 3)
-        self.assertSequenceEqual(rng, [0, 3, 6])
+        self.assertSequenceEqual(rng, range(0, 9, 1))
         rng = nrange(0, 11, 3)
-        self.assertSequenceEqual(rng, [0, 3, 6, 9])
+        self.assertSequenceEqual(rng, range(0, 10, 1))
         rng = nrange(0, 12, 3)
-        self.assertSequenceEqual(rng, [0, 3, 6, 9])
-        rng = nrange(0, 13, 3)
-        self.assertSequenceEqual(rng, [0, 3, 6, 9])
-        rng = nrange(0, 14, 3)
-        self.assertSequenceEqual(rng, [0, 3, 6, 9, 12])
+        self.assertSequenceEqual(rng, range(0, 11, 1))
+        rng = nrange(0, 13, 1)
+        self.assertSequenceEqual(rng, range(0, 14, 1))
+        rng = nrange(0, 14, 2)
+        self.assertSequenceEqual(rng, range(0, 14, 1))
 
     def test_parse_ng_range(self):
         nrng = parse_ng_range(range(10), 3)
-        self.assertSequenceEqual(nrng, [0, 3, 6])
+        self.assertSequenceEqual(nrng, range(8))
         nrng = parse_ng_range(range(10) + range(12, 15), 3)
-        self.assertSequenceEqual(nrng, [0, 3, 6, 12])
-        nrng = parse_ng_range(range(10) + range(12, 16) + range(20, 22), 3)
-        self.assertSequenceEqual(nrng, [0, 3, 6, 12])
+        self.assertSequenceEqual(nrng, range(8) + range(12, 15, 3))
+        nrng = parse_ng_range(range(10) + range(12, 16) + range(20, 22), 2)
+        self.assertSequenceEqual(nrng, range(9) + range(12, 15) + range(20, 21))
 
     def test_nword(self):
         ft = FeatureTemplate.nword(self.data[:8], 3, 2, 2)
