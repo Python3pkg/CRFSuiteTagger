@@ -16,6 +16,7 @@ __author__ = 'Aleksandar Savkov'
 
 import sys
 import csv
+import gzip
 
 from os.path import expanduser
 
@@ -28,7 +29,13 @@ def read_cls(cp):
 
 
 def read_emb(ep):
-    r = csv.reader(open(expanduser(ep), 'r'), delimiter=' ')
+    if ep.endswith('.gz'):
+        with gzip.open(ep, 'rb') as f:
+            r = []
+            for l in f:
+                r.append(l.split(' '))
+    else:
+        r = csv.reader(open(expanduser(ep), 'r'), delimiter=' ')
     return {x[0]: x[1:] for x in r}
 
 
