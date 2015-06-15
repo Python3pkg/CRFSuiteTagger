@@ -361,6 +361,30 @@ class FeatureTemplate:
         return 'cnum[%s]=%s' % (rel, cnum)
 
     @staticmethod
+    def cls2(data, i, rel=0, c=None, *args, **kwargs):
+        """
+
+        :param data: data
+        :type data: DataFrame
+        :param i: index
+        :type i: int
+        :param c: clusters
+        :type c: dict
+        :param rel: relative index
+        :type rel: int
+        :return: feature string
+        :rtype: str
+        """
+        if 0 <= i + rel < len(data):
+            try:
+                cnum = c[data[i + rel]['form']]
+            except KeyError:
+                cnum = None
+        else:
+            cnum = None
+        return 'cnum[%s]=%s' % (rel, cnum)
+
+    @staticmethod
     def emb(data, i, rel=0, j=0, e=None, *args, **kwargs):
         if 0 <= i + rel < len(data):
             try:

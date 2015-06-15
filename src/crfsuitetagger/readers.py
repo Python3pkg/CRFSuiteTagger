@@ -24,8 +24,16 @@ csv.field_size_limit(sys.maxsize)
 
 
 def read_cls(cp):
-    r = csv.reader(open(expanduser(cp), 'r'), delimiter='\t')
+    r = []
+    with open(expanduser(cp), 'r') as f:
+        for l in f:
+            r.append(l.strip().split('\t'))
+    #r = csv.reader(open(expanduser(cp), 'r'), delimiter='\t')
     return {x[0]: x[1] for x in r}
+
+
+def read_cls2(cp):
+    return read_cls(cp)
 
 
 def read_emb(ep):
@@ -35,12 +43,20 @@ def read_emb(ep):
             for l in f:
                 r.append(l.split(' '))
     else:
-        r = csv.reader(open(expanduser(ep), 'r'), delimiter=' ')
+        r = []
+        with open(expanduser(ep), 'r') as f:
+            for l in f:
+                r.append(l.strip().split(' '))
+        # r = csv.reader(open(expanduser(ep), 'r'), delimiter=' ')
     return {x[0]: x[1:] for x in r}
 
 
 def read_brown(bp):
-    r = csv.reader(open(expanduser(bp), 'r'), delimiter='\t')
+    r = []
+    with open(expanduser(bp), 'r') as f:
+        for l in f:
+            r.append(l.strip().split('\t'))
+    # r = csv.reader(open(expanduser(bp), 'r'), delimiter='\t')
     return {x[1]: x[0] for x in r}
 
 

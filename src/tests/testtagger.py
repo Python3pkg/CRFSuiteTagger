@@ -485,7 +485,7 @@ class TestEval(TestCase):
                        'B-NP' if x % 2 else 'B-VP', 9 if x == 0 else -1)
         data[0]['guesstag'] = 'B-NP'
         data[0]['guesstag'] = 'I-NP'
-        r = conll(data)
+        r = conll_old(data)
         self.assertAlmostEqual(float(r['Total']['fscore']), 90.0)
         self.assertAlmostEqual(float(r['VP']['fscore']), 88.89)
         self.assertAlmostEqual(float(r['NP']['fscore']), 90.91)
