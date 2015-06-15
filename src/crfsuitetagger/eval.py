@@ -107,6 +107,43 @@ class AccuracyResults(dict):
 
 
 def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
+    from bioeval import evaluate
+    go, ge = set(), set()
+    if data[0]['chunktag'][0] not in 'BOS':
+        raise ValueError('Invalid chunktag on first token.')
+    if data[0]['guesstag'][0] not in 'BOS':
+        raise ValueError('Invalid guesstag on first token.')
+    chunk_go = [(0, data[0]['form'], data[0]['postag'], data[0]['chunktag'])]
+    chunk_ge = [(0, data[0]['form'], data[0]['postag'], data[0]['guesstag'])]
+    for tid, r in enumerate(data[1:], start=1):
+        if r['chunktag'][0] in 'BOS':
+            # start new
+            go.add(tuple(chunk_go))
+            chunk_go = [(tid, r['form'], r['postag'], r['chunktag'])]
+        else:
+            # continue chunk
+            chunk_go.append((tid, r['form'], r['postag'], r['chunktag']))
+        if r['guesstag'][0] in 'BOS':
+            # start new
+            ge.add(tuple(chunk_ge))
+            chunk_ge = [(tid, r['form'], r['postag'], r['guesstag'])]
+        else:
+            # continue chunk
+            chunk_ge.append((tid, r['form'], r['postag'], r['guesstag']))
+
+    if chunk_ge:
+        ge.add(tuple(chunk_ge))
+    if chunk_go:
+        go.add(tuple(chunk_go))
+
+    pr, re, f1 = evaluate(go, ge)
+
+    r = AccuracyResults({'Total': {'precision': pr, 'recall': re,
+                                   'fscore': f1}})
+    return r
+
+
+def conll_old(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
     """Evaluates chunking f1-score provided with data with the following fields:
     form, postag, chunktag, guesstag
 
@@ -142,7 +179,7 @@ def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
     with open(prl, 'w') as fh:
         fh.write(conll_script)
     c = cmd(
-        'perl conll_eval.pl -l < {}',
+        'perl %s -l < {}' % prl,
         fp_dp,
         cwd=cwd,
         stdout=fh_out
