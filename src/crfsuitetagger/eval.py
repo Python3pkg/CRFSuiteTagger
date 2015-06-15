@@ -138,7 +138,7 @@ def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
            ts=' ')
 
     cwd = os.getcwd()
-    prl = join(cwd, 'conll_eval.pl', random_str())
+    prl = join(cwd, 'conll_eval.pl' + random_str())
     with open(prl, 'w') as fh:
         fh.write(conll_script)
     c = cmd(
