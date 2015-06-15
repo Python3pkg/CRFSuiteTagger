@@ -23,7 +23,7 @@ import traceback
 import random as rnd
 
 from os.path import join
-from utils import export
+from utils import export, random_str
 from iterpipes import check_call, cmd
 from subprocess import CalledProcessError
 
@@ -138,7 +138,7 @@ def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
            ts=' ')
 
     cwd = os.getcwd()
-    prl = join(cwd, 'conll_eval.pl')
+    prl = join(cwd, 'conll_eval.pl', random_str())
     with open(prl, 'w') as fh:
         fh.write(conll_script)
     c = cmd(

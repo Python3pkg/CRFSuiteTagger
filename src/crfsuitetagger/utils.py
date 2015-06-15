@@ -18,6 +18,8 @@ import re
 import copy
 import os.path
 import StringIO
+import random
+import string
 import ConfigParser
 import numpy as np
 
@@ -350,3 +352,7 @@ def copycfg(cfg):
     buff.seek(0)
     c.readfp(buff)
     return c
+
+
+def random_str(size=10, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))

@@ -295,6 +295,21 @@ class FeatureTemplate:
         return 'can[%s]=%s' % (rel, w)
 
     @staticmethod
+    def canx(data, i, rel=0, *args, **kwargs):
+        if 0 <= i + rel < len(data):
+            w = data[i + rel]['form']
+            if re.match('~+', w):
+                w = '<redacted>'
+            if re.match('[0-9\.,-:]+', w):
+                w = '<num>'
+            w = re.sub('\d', '#', w)
+            w = re.sub('\w', 'x', w)
+            w = re.sub('[^#x]', '*', w)
+        else:
+            w = None
+        return 'canx[%s]=%s' % (rel, w)
+
+    @staticmethod
     def brown(data, i, rel=0, b=None, p=None, *args, **kwargs):
         """
 
