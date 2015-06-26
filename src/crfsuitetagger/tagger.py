@@ -15,6 +15,8 @@
 
 __author__ = 'Aleksandar Savkov'
 
+import re
+import copy
 import time
 import eval
 import pickle
@@ -38,6 +40,13 @@ class CRFSTagger:
         self.resources = None
         self.train_data = None
         self.test_data = None
+        self.tagger = None
+
+        try:
+            import canonical
+            self.canonical = canonical.REPLACEMENTS
+        except ImportError:
+            self.canonical = None
 
         if cfg:
 
@@ -106,6 +115,10 @@ class CRFSTagger:
     def verbose(self):
         return bool(self.cfg_tag.get('verbose', True))
 
+    @property
+    def info(self):
+        return self.tagger.info if self.tagger else None
+
     def load_resources(self):
         self.resources = {}
         for n, p in self.cfg_res.items():
@@ -127,7 +140,16 @@ class CRFSTagger:
                 ts=self.ts
             )
 
-    def extract_features(self, d):
+    def extract_features(self, doc):
+
+        d = copy.deepcopy(doc)
+
+        # replace features
+        if self.canonical:
+            for t in d:
+                for r in self.canonical.keys():
+                    if re.match(r, t['form']):
+                        t['form'] = self.canonical[r]
 
         # number of features
         nft = len(self.ft_tmpl.vec)
@@ -202,7 +224,7 @@ class CRFSTagger:
         ft = list(self._xfts(d))
         pickle.dump(ft, fp)
 
-    def train(self, data=None, fts=None, ls=None, lbl_col=None):
+    def train(self, data=None, fts=None, ls=None, lbl_col=None, dump=True):
 
         # setting up the training data
         d = self.train_data if data is None else data
@@ -231,9 +253,12 @@ class CRFSTagger:
             pass
         trainer.train(crfs_mp)
 
-        self.dump_model(self.model_path)
+        self.tagger = Tagger()
+        self.tagger.open(crfs_mp)
 
-        pickle.dump(self.cfg, open('%s.cfg.pcl' % self.model_path, 'w'))
+        if dump:
+            self.dump_model(self.model_path)
+            pickle.dump(self.cfg, open('%s.cfg.pcl' % self.model_path, 'w'))
 
     def tag(
             self,
@@ -273,7 +298,9 @@ class CRFSTagger:
 
         tgr = tagger
 
-        if tgr is None:
+        if tgr is None and self.tagger:
+            tgr = self.tagger
+        elif tgr is None:
             tgr = Tagger()
             tgr.open('%s.crfs' % self.model_path)
 
