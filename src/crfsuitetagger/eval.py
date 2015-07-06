@@ -23,6 +23,7 @@ import traceback
 import random as rnd
 
 from os.path import join
+from bioeval import evaluate
 from utils import export, random_str
 from iterpipes import check_call, cmd
 from subprocess import CalledProcessError
@@ -106,44 +107,60 @@ class AccuracyResults(dict):
         return self.__str__()
 
 
-def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
-    from bioeval import evaluate
+def bio(data, form='form', postag='postag', chunktag='chunktag',
+        guesstag='guesstag'):
+    """Calculates precision, recall and f1 score for BIO and BEISO annotation.
+    This is a faster python-only alternative to the `conll` method.
+
+    :param data: annotated data
+    :type data: np.recarray
+    :param form: word/token column name
+    :type form: str
+    :param postag: POS annotation column name
+    :type postag: str
+    :param chunktag: chunk annotation column name
+    :type chunktag: str
+    :param guesstag: guessed/inferred annotation column name
+    :type guesstag: str
+    :returns: accuracy estimates
+    :rtype: AccuracyResults
+    """
     go, ge = set(), set()
-    if data[0]['chunktag'][0] not in 'BOS':
-        raise ValueError('Invalid chunktag on first token.')
-    if data[0]['guesstag'][0] not in 'BOS':
-        raise ValueError('Invalid guesstag on first token.')
-    chunk_go = [(0, data[0]['form'], data[0]['postag'], data[0]['chunktag'])]
-    chunk_ge = [(0, data[0]['form'], data[0]['postag'], data[0]['guesstag'])]
+    if data[0][chunktag][0] not in 'BOS':
+        raise ValueError('Invalid chunktag in first token.')
+    if data[0][guesstag][0] not in 'BOS':
+        raise ValueError('Invalid guesstag in first token.')
+    chunk_go = [(0, data[0][form], data[0][postag], data[0][chunktag])]
+    chunk_ge = [(0, data[0][form], data[0][postag], data[0][guesstag])]
     for tid, r in enumerate(data[1:], start=1):
-        if r['chunktag'][0] in 'BOS':
+        if r[chunktag][0] in 'BOS':
             # start new
             go.add(tuple(chunk_go))
-            chunk_go = [(tid, r['form'], r['postag'], r['chunktag'])]
+            chunk_go = [(tid, r[form], r[postag], r[chunktag])]
         else:
             # continue chunk
-            chunk_go.append((tid, r['form'], r['postag'], r['chunktag']))
-        if r['guesstag'][0] in 'BOS':
+            chunk_go.append((tid, r[form], r[postag], r[chunktag]))
+        if r[guesstag][0] in 'BOS':
             # start new
             ge.add(tuple(chunk_ge))
-            chunk_ge = [(tid, r['form'], r['postag'], r['guesstag'])]
+            chunk_ge = [(tid, r[form], r[postag], r[guesstag])]
         else:
             # continue chunk
-            chunk_ge.append((tid, r['form'], r['postag'], r['guesstag']))
+            chunk_ge.append((tid, r[form], r[postag], r[guesstag]))
 
     if chunk_ge:
         ge.add(tuple(chunk_ge))
     if chunk_go:
         go.add(tuple(chunk_go))
 
-    pr, re, f1 = evaluate(go, ge)
+    f1, pr, re = evaluate(go, ge)
 
     r = AccuracyResults({'Total': {'precision': pr, 'recall': re,
                                    'fscore': f1}})
     return r
 
 
-def conll_old(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
+def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
     """Evaluates chunking f1-score provided with data with the following fields:
     form, postag, chunktag, guesstag
 
@@ -155,7 +172,6 @@ def conll_old(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
     :return: f1-score estimate
     :rtype: AccuracyResults
     """
-    # TODO: reimplement the conll testing script in Python
     try:
         os.makedirs(join(os.getcwd(), 'tmp/'))
     except OSError:
