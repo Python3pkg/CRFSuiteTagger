@@ -13,3 +13,5 @@
 # You should have received a copy of the GNU General Public License
 # along with CRFSuiteTagger.  If not, see <http://www.gnu.org/licenses/>.
 __author__ = 'Aleksandar Savkov'
+
+__version__ = 0.1
