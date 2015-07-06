@@ -325,6 +325,11 @@ def cv_splits(data, k=10):
 
 
 def expandpaths(cfg):
+    """Expands tilde notation for user home directory.
+
+    :param cfg: ConfigParser object
+    :type cfg: ConfigParser.ConfigParser
+    """
     for sec in cfg.sections():
         for opt in cfg.options(sec):
             # option value
@@ -335,7 +340,15 @@ def expandpaths(cfg):
                 cfg.set(sec, opt, os.path.expanduser(ov))
 
 
-def clipcfg(cfg):
+def clean_cfg(cfg):
+    """Cleans unnecessary data paths from model configuration. Used before
+    dumping.
+
+    :param cfg: ConfigParser object
+    :type cfg: ConfigParser.ConfigParser
+    :return: ConfigParser object
+    :rtype: ConfigParser.ConfigParser
+    """
     c = copycfg(cfg)
     c.set('tagger', 'train', None)
     c.set('tagger', 'test', None)
@@ -346,6 +359,13 @@ def clipcfg(cfg):
 
 
 def copycfg(cfg):
+    """Creates a deep copy of a ConfigParser object.
+
+    :param cfg: ConfigParser object
+    :type cfg: ConfigParser.ConfigParser
+    :return: copy of ConfigParser object
+    :rtype: ConfigParser.ConfigParser
+    """
     c = ConfigParser.ConfigParser()
     buff = StringIO.StringIO()
     cfg.write(buff)
