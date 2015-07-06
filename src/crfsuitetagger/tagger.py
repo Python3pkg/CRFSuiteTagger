@@ -17,7 +17,6 @@ __author__ = 'Aleksandar Savkov'
 
 import re
 import copy
-import time
 import eval
 import pickle
 import readers
@@ -27,7 +26,7 @@ import numpy as np
 from os import makedirs
 from os.path import dirname, expanduser
 from ftex import FeatureTemplate
-from utils import parse_tsv, gsequences, expandpaths, clipcfg
+from utils import parse_tsv, gsequences, expandpaths, clean_cfg
 from pycrfsuite import Trainer, Tagger
 
 
@@ -200,16 +199,17 @@ class CRFSTagger:
 
     def dump_model(self, fp):
         md = Model()
-        md.cfg = clipcfg(self.cfg)
+        md.cfg = clean_cfg(self.cfg)
         md.resources = self.resources
+        fpx = expanduser(fp)
         try:
-            makedirs(dirname(fp))
+            makedirs(dirname(fpx))
         except OSError:
             pass
-        pickle.dump(md, open(fp, 'w'))
-        if fp != self.model_path:
+        pickle.dump(md, open(fpx, 'w'))
+        if fpx != self.model_path:
             src = '%s.crfs' % self.model_path
-            trg = '%s.crfs' % fp
+            trg = '%s.crfs' % fpx
             try:
                 makedirs(dirname(trg))
             except OSError:
@@ -217,12 +217,12 @@ class CRFSTagger:
             shutil.copy(src, trg)
 
     def dump_ft_template(self, fp):
-        pickle.dump(self.ft_tmpl, fp)
+        pickle.dump(self.ft_tmpl, expanduser(fp))
 
     def dump_fts(self, fp, data=None):
         d = self.train_data if data is None else data
         ft = list(self._xfts(d))
-        pickle.dump(ft, fp)
+        pickle.dump(ft, expanduser(fp))
 
     def train(self, data=None, fts=None, ls=None, lbl_col=None, dump=True):
 
