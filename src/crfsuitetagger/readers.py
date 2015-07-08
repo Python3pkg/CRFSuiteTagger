@@ -14,13 +14,9 @@
 # along with CRFSuiteTagger.  If not, see <http://www.gnu.org/licenses/>.
 __author__ = 'Aleksandar Savkov'
 
-import sys
-import csv
 import gzip
 
 from os.path import expanduser
-
-csv.field_size_limit(sys.maxsize)
 
 
 def read_cls(cp):
@@ -28,12 +24,7 @@ def read_cls(cp):
     with open(expanduser(cp), 'r') as f:
         for l in f:
             r.append(l.strip().split('\t'))
-    #r = csv.reader(open(expanduser(cp), 'r'), delimiter='\t')
     return {x[0]: x[1] for x in r}
-
-
-def read_cls2(cp):
-    return read_cls(cp)
 
 
 def read_emb(ep):
@@ -47,7 +38,6 @@ def read_emb(ep):
         with open(expanduser(ep), 'r') as f:
             for l in f:
                 r.append(l.strip().split(' '))
-        # r = csv.reader(open(expanduser(ep), 'r'), delimiter=' ')
     return {x[0]: x[1:] for x in r}
 
 
@@ -56,7 +46,6 @@ def read_brown(bp):
     with open(expanduser(bp), 'r') as f:
         for l in f:
             r.append(l.strip().split('\t'))
-    # r = csv.reader(open(expanduser(bp), 'r'), delimiter='\t')
     return {x[1]: x[0] for x in r}
 
 
