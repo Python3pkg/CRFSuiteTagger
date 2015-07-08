@@ -23,7 +23,7 @@ def read_cls(cp):
     r = []
     with open(expanduser(cp), 'r') as f:
         for l in f:
-            r.append(l.strip().split('\t'))
+            r.append(l.rstrip().split('\t'))
     return {x[0]: x[1] for x in r}
 
 
