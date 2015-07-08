@@ -21,6 +21,7 @@ import time
 import StringIO
 import traceback
 import random as rnd
+import warnings
 
 from os.path import join
 from bioeval import evaluate
@@ -107,53 +108,51 @@ class AccuracyResults(dict):
         return self.__str__()
 
 
-def bio(data, form='form', postag='postag', chunktag='chunktag',
-        guesstag='guesstag'):
+def bio(data, label_col='chunktag', inference_col='guesstag'):
     """Calculates precision, recall and f1 score for BIO and BEISO annotation.
     This is a faster python-only alternative to the `conll` method.
 
     :param data: annotated data
     :type data: np.recarray
-    :param form: word/token column name
-    :type form: str
-    :param postag: POS annotation column name
-    :type postag: str
-    :param chunktag: chunk annotation column name
-    :type chunktag: str
-    :param guesstag: guessed/inferred annotation column name
-    :type guesstag: str
+    :param label_col: chunk annotation column name
+    :type label_col: str
+    :param inference_col: guessed/inferred annotation column name
+    :type inference_col: str
     :returns: accuracy estimates
     :rtype: AccuracyResults
     """
     go, ge = set(), set()
-    if data[0][chunktag][0] not in 'BOS':
+    if data[0][label_col][0] not in 'BOS':
         raise ValueError('Invalid chunktag in first token.')
-    if data[0][guesstag][0] not in 'BOS':
+    if data[0][inference_col][0] not in 'BOS':
         raise ValueError('Invalid guesstag in first token.')
-    chunk_go = [(0, data[0][form], data[0][postag], data[0][chunktag])]
-    chunk_ge = [(0, data[0][form], data[0][postag], data[0][guesstag])]
+    chunk_go = [(0, data[0][label_col])]
+    chunk_ge = [(0, data[0][inference_col])]
     for tid, r in enumerate(data[1:], start=1):
-        if r[chunktag][0] in 'BOS':
+        if r[label_col][0] in 'BOS':
             # start new
             go.add(tuple(chunk_go))
-            chunk_go = [(tid, r[form], r[postag], r[chunktag])]
+            chunk_go = [(tid, r[label_col])]
         else:
             # continue chunk
-            chunk_go.append((tid, r[form], r[postag], r[chunktag]))
-        if r[guesstag][0] in 'BOS':
+            chunk_go.append((tid, r[label_col]))
+        if r[inference_col][0] in 'BOS':
             # start new
             ge.add(tuple(chunk_ge))
-            chunk_ge = [(tid, r[form], r[postag], r[guesstag])]
+            chunk_ge = [(tid, r[inference_col])]
         else:
             # continue chunk
-            chunk_ge.append((tid, r[form], r[postag], r[guesstag]))
+            chunk_ge.append((tid, r[inference_col]))
 
     if chunk_ge:
         ge.add(tuple(chunk_ge))
     if chunk_go:
         go.add(tuple(chunk_go))
 
-    f1, pr, re = evaluate(go, ge)
+    # tuples in sets are of the form (id, form, bio_annotation)
+    inference_idx = 1
+
+    f1, pr, re = evaluate(go, ge, chunk_col=inference_idx)
 
     r = AccuracyResults({'Total': {'precision': pr, 'recall': re,
                                    'fscore': f1}})
@@ -166,12 +165,16 @@ def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
 
     Currently uses the CoNLL-2000 evaluation script to make the estimate.
 
+    This method will be deprecated with version 0.2
+
     :param data: np.array
     :param cols: columns to be used for the evaluation
     :type cols: str or tuple or list
     :return: f1-score estimate
     :rtype: AccuracyResults
     """
+    warnings.warn('Using the CoNLL-2000 evaluation script is deprecated. `bio` '
+                  'evaluation should be used instead.')
     try:
         os.makedirs(join(os.getcwd(), 'tmp/'))
     except OSError:
@@ -257,17 +260,22 @@ def pos(data):
     return results
 
 
-def ner(data, cols=('form', 'postag', 'netag', 'guesstag')):
-    """Evaluates F1-score for NER using the CoNLL-2000 script.
+def ner(data, label_col='netag', inference_col='guesstag'):
+    """Evaluates F1-score for NER using BIO evaluation.
 
-    :param data: np.array
-    :param cols: columns to be used for the evaluation
-    :type cols: str or tuple or list
-    :return: f1-score estimate
+    :param data: annotated data
+    :type data: np.recarray
+    :param label_col: chunk annotation column name
+    :type label_col: str
+    :param inference_col: guessed/inferred annotation column name
+    :type inference_col: str
+    :returns: accuracy estimates
     :rtype: AccuracyResults
     """
-    return conll(data, cols=cols)
+    return bio(data, label_col, inference_col)
 
+
+# CoNLL-2000 chunking evaluation script
 conll_script = '''#!/usr/bin/perl -w
 # conlleval: evaluate result of processing CoNLL-2000 shared task
 # usage:     conlleval [-l] [-r] [-d delimiterTag] [-o oTag] < file

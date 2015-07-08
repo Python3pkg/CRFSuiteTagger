@@ -19,7 +19,7 @@ import re
 
 class FeatureTemplate:
 
-    def __init__(self, tmpl=None, fnx=None, win_fnx=None):
+    def __init__(self, tmpl=None, fnx=None, win_fnx=None, cols=None):
         """Constructs either a FeatureTemplate object or takes parameters to
         set the template dictionary and the list of special functions.
 
@@ -49,10 +49,14 @@ class FeatureTemplate:
         :type fnx: list
         :param win_fnx: additional window feature extraction functions
         :type win_fnx: list
+        :param cols: map of columns names
+        :type cols: dict
         """
 
         self.vec = [] if tmpl is None else tmpl
         self.resources = {}
+        self.cols = cols if cols else {'form': 'form', 'postag': 'postag',
+                                       'chunktag': 'chunktag', 'netag': 'netag'}
 
         if win_fnx:
             # all window functions
@@ -71,13 +75,26 @@ class FeatureTemplate:
                 self.__dict__[f.__name__] = f
 
     def parse_ftvec_templ(self, s, r):
-        """Parses a feature vector template string into a FeatureTemplate object.
+        """Parses a feature vector template string into a FeatureTemplate
+        object.
 
-        *Important*: if resources (e.g. embeddings) are used in the feature template
-        they should be provided during the parsing in the `r` parameter in order to
-        be prepacked as parameters to the feature extraction function.
+        *Important*: if resources (e.g. embeddings) are used in the feature
+        template they should be provided during the parsing in the `r`
+        parameter in order to be prepacked as parameters to the feature
+        extraction function.
 
-        :param s: feature vector string
+        Feature vector template example:
+
+        word:[-1:1];pos:[-1:0];npos:[-1:1],2;cls:[0];short
+
+        Note that `cls` requires a resource (see `cls` function) and `npos` has
+        an additional function parameter indicating bigram features should be
+        generated (as opposed to other n-grams). Additional attributes may have
+        default values used in case they are omitted in the feature template.
+
+        **FEATURE VECTOR TEMPLATE BUILDING FUNCTION**
+
+        :param s: feature vector template string
         :type s: str
         :param r: dictionary of resources
         :type r: dict
@@ -122,41 +139,11 @@ class FeatureTemplate:
             # name, window, parameters
             self.add_win_features(fn, fw, tuple(fp))
 
-    def make_fts(self,
-                 data,
-                 i,
-                 form_name='form',
-                 *args, **kwargs):
-        """
-
-        :param data: data sequence
-        :type data: np.array
-        :param i: index
-        :type i: int
-        :param form_name: name of column containing the form
-        :type form: str
-        :return: feature matrix
-        :rtype: list
-        """
-        ret = [data[i][form_name]]
-
-        # joint attribute dictionary of the class and the instance
-        # needed for joint access to implemented and user-provided methods
-        ad = {x: y.__func__ if type(y) is staticmethod else y
-              for x, y
-              in FeatureTemplate.__dict__.items()}
-        ad.update(self.__dict__)
-
-        for itm in self.vec:
-            f = itm[0]
-            p = itm[1:]
-            func = ad[f] if type(f) is str else f
-            ret.append(func(data, i, *(p + args), **kwargs))
-        return ret
-
     def add_feature(self, fn, fp=()):
         """Takes a feature extraction function (or its name) and its parameters,
         and packs them into a tuple entry in the feature vector template.
+
+        **FEATURE VECTOR TEMPLATE BUILDING FUNCTION**
 
         :param fn: feature function name
         :type fn: str or function
@@ -170,6 +157,8 @@ class FeatureTemplate:
         context window indices, and a tuple containing the function parameters.
         It iterates over the generator adding entries to the feature vector
         template.
+
+        **FEATURE VECTOR TEMPLATE BUILDING FUNCTION**
 
         :param fn: feature extraction function name
         :type fn: function or str
@@ -186,13 +175,29 @@ class FeatureTemplate:
 
     @staticmethod
     def generic_win(fn, fw, fp, *args, **kwargs):
+        """Iterates over the list of single features that make up a context
+        window feature, and yields them one at a time. This function is the
+        default behaviour for context window features.
+
+        Note: If a window feature requires special behaviour, another window
+        function needs to be provided and linked to it in the constructor. See
+        `fnx` and `win_fnx` attributes in the constructor.
+
+        **FEATURE VECTOR TEMPLATE BUILDING FUNCTION**
+
+        :param fn: function name
+        :param fw: context window
+        :param fp: additional feature function parameters
+        """
         prms = tuple() if fp is None else tuple(fp)
         for i in fw:
             yield (fn, i) + prms
 
     @staticmethod
     def emb_win(fn, fw, fp, *args, **kwargs):
-        """
+        """Same as `generic_win`, but suited for embeddings features.
+
+        **FEATURE VECTOR TEMPLATE BUILDING FUNCTION**
 
         :param fn: function name
         :param fw: embeddings window (range of ints)
@@ -218,45 +223,143 @@ class FeatureTemplate:
     def ngram_win(fn, fw, fp, *args, **kwargs):
         """Yields the starting indices of all full n-grams from left to right.
 
+        **FEATURE VECTOR TEMPLATE BUILDING FUNCTION**
+
         :param fn: function name
         :param fw: n-grams window
         :param fp: feature params (position 0 reserved for n in n-grams)
         """
-        assert len(fp) > 0, 'N-gram features require N to be set.'
-        n = int(fp[0])
+        try:
+            n = int(fp[0])
+        except IndexError:
+            # in case no parameter is provided, bigrams are used
+            n = 2
         prms = tuple() if len(fp) == 1 else tuple(fp[1:])
         nfw = parse_ng_range(fw, n)
         for i in nfw:
             yield (fn, i, n) + prms
 
+    def make_fts(self,
+                 data,
+                 i,
+                 form_col='form',
+                 *args, **kwargs):
+        """Generates the (context) features for a single item in a sequence
+        based on the feature template embedded in this object.
+
+        **FEATURE VECTOR GENERATING FUNCTION**
+
+        :param data: data sequence
+        :type data: np.recarray
+        :param i: index
+        :type i: int
+        :param form_col: name of column containing the form
+        :type form: str
+        :return: feature matrix
+        :rtype: list
+        """
+        ret = [data[i][form_col]]
+
+        # joint attribute dictionary of the class and the instance
+        # needed for joint access to implemented and user-provided methods
+        ad = {x: y.__func__ if type(y) is staticmethod else y
+              for x, y
+              in FeatureTemplate.__dict__.items()}
+        ad.update(self.__dict__)
+
+        for itm in self.vec:
+            f = itm[0]
+            p = itm[1:]
+            func = ad[f] if type(f) is str else f
+            ret.append(func(data, i, self.cols, *(p + args), **kwargs))
+        return ret
+
     @staticmethod
-    def word(data, i, rel=0, *args, **kwargs):
+    def word(data, i, cols, rel=0, *args, **kwargs):
+        """Generates a feature based on the `form` column.
+
+        **FEATURE GENERATION FUNCTION**
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :return: feature
+        :rtype: str
+        """
         if 0 <= i + rel < len(data):
-            form = data[i + rel]['form']
+            form = data[i + rel][cols['form']]
         else:
             form = None
         return 'w[%s]=%s' % (rel, form)
 
     @staticmethod
-    def nword(data, i, rel=0, n=None):
+    def nword(data, i, cols, rel=0, n=None):
+        """Generates a n-gram context feature based on the `form` column.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param n: n in n-gram
+        :type n: int
+        :return: feature
+        :rtype: str
+        """
         if 0 <= i + rel and i + rel + n - 1 < len(data):
             s = i + rel
             e = i + rel + n
-            forms = ''.join([data[x]['form'] for x in range(s, e)])
+            forms = ''.join([data[x][cols['form']] for x in range(s, e)])
         else:
             forms = None
         return '%sw[%s]=%s' % (n, rel, forms)
 
     @staticmethod
-    def pos(data, i, rel=0, *args, **kwargs):
+    def pos(data, i, cols, rel=0, *args, **kwargs):
+        """Generates a context feature based on part of speech in column `pos`.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :return: feature
+        :rtype: str
+        """
         if 0 <= i + rel < len(data):
-            postag = data[i + rel]['postag']
+            postag = data[i + rel][cols['postag']]
         else:
             postag = None
         return 'p[%s]=%s' % (rel, postag)
 
     @staticmethod
-    def npos(data, i, rel=0, n=None):
+    def npos(data, i, cols, rel=0, n=2):
+        """Generates a n-gram context feature based on the `postag` column.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param n: n in n-gram
+        :type n: int
+        :return: feature
+        :rtype: str
+        """
         if 0 <= i + rel and i + rel + n - 1 < len(data):
             s = i + rel
             e = i + rel + n
@@ -266,27 +369,72 @@ class FeatureTemplate:
         return '%sp[%s]=%s' % (n, rel, postags)
 
     @staticmethod
-    def chunk(data, i, rel=0, *args, **kwargs):
+    def chunk(data, i, cols, rel=0, *args, **kwargs):
+        """Generates a context feature based on chunk annotation in column
+        `chunktag`.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :return: feature
+        :rtype: str
+        """
         if 0 <= i + rel < len(data):
-            chunktag = data[i + rel]['chunktag']
+            chunktag = data[i + rel][cols['chunktag']]
         else:
             chunktag = None
         return 'ch[%s]=%s' % (rel, chunktag)
 
     @staticmethod
-    def nchunk(data, i, rel=0, n=None):
+    def nchunk(data, i, cols, rel=0, n=None):
+        """Generates a n-gram context feature based on the `chunktag` column.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param n: n in n-gram
+        :type n: int
+        :return: feature
+        :rtype: str
+        """
         if 0 <= i + rel and i + rel + n - 1 < len(data):
             s = i + rel
             e = i + rel + n
-            chunktags = ''.join([data[x]['chunktag'] for x in range(s, e)])
+            chunktags = ''.join(
+                [data[x][cols['chunktag']] for x in range(s, e)]
+            )
         else:
             chunktags = None
         return '%sp[%s]=%s' % (n, rel, chunktags)
 
     @staticmethod
-    def can(data, i, rel=0, *args, **kwargs):
+    def can(data, i, cols, rel=0, *args, **kwargs):
+        """Generates a context feature based on canonicalised form of the
+        `form` column.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :return: feature
+        :rtype: str
+        """
         if 0 <= i + rel < len(data):
-            w = data[i + rel]['form']
+            w = data[i + rel][cols['form']]
             w = re.sub('\d', '#', w)
             w = re.sub('\w', 'x', w)
             w = re.sub('[^#x]', '*', w)
@@ -295,28 +443,20 @@ class FeatureTemplate:
         return 'can[%s]=%s' % (rel, w)
 
     @staticmethod
-    def canx(data, i, rel=0, *args, **kwargs):
-        if 0 <= i + rel < len(data):
-            w = data[i + rel]['form']
-            if re.match('~+', w):
-                w = '<redacted>'
-            if re.match('[0-9\.,-:]+', w):
-                w = '<num>'
-            w = re.sub('\d', '#', w)
-            w = re.sub('\w', 'x', w)
-            w = re.sub('[^#x]', '*', w)
-        else:
-            w = None
-        return 'canx[%s]=%s' % (rel, w)
+    def brown(data, i, cols, rel=0, b=None, p=None, *args, **kwargs):
+        """Generates Brown (hierarchical) clusters feature based on the `form`
+        column value.
 
-    @staticmethod
-    def brown(data, i, rel=0, b=None, p=None, *args, **kwargs):
-        """
+        See link for more details on data resource format:
+
+            https://github.com/percyliang/brown-cluster
 
         :param data: data
         :type data: DataFrame
         :param i: index
         :type i: int
+        :param cols: column map
+        :type cols: dict
         :param b: brown clusters
         :type b: dict
         :param rel: relative index
@@ -328,7 +468,7 @@ class FeatureTemplate:
         cname = None
         if 0 <= i + rel < len(data):
             try:
-                cname = b[data[i + rel]['form']]
+                cname = b[data[i + rel][cols['form']]]
                 if p:
                     cname = cname[:int(p)]
             except KeyError:
@@ -337,13 +477,20 @@ class FeatureTemplate:
         return 'cn[%s]:%s=%s' % (rel, pref, cname)
 
     @staticmethod
-    def cls(data, i, rel=0, c=None, *args, **kwargs):
-        """
+    def cls(data, i, cols, rel=0, c=None, *args, **kwargs):
+        """Generates features from flat word clusters based on the `form`
+        column.
+
+        See link for more details on data resource format:
+
+            https://github.com/ninjin/clark_pos_induction
 
         :param data: data
         :type data: DataFrame
         :param i: index
         :type i: int
+        :param cols: column map
+        :type cols: dict
         :param c: clusters
         :type c: dict
         :param rel: relative index
@@ -353,7 +500,7 @@ class FeatureTemplate:
         """
         if 0 <= i + rel < len(data):
             try:
-                cnum = c[data[i + rel]['form']]
+                cnum = c[data[i + rel][cols['form']]]
             except KeyError:
                 cnum = None
         else:
@@ -361,13 +508,23 @@ class FeatureTemplate:
         return 'cnum[%s]=%s' % (rel, cnum)
 
     @staticmethod
-    def cls2(data, i, rel=0, c=None, *args, **kwargs):
-        """
+    def emb(data, i, cols, rel=0, j=0, e=None, *args, **kwargs):
+        """Generates features from word embeddings based on the `form` column.
+
+        See links for more details on data resource format:
+
+            http://metaoptimize.com/projects/wordreprs/
+            https://code.google.com/p/word2vec/
+
+        GOTCHA: some resources come with separators of 4 space characters
+        (replacing a tab?), while the default is a single space.
 
         :param data: data
         :type data: DataFrame
         :param i: index
         :type i: int
+        :param cols: column map
+        :type cols: dict
         :param c: clusters
         :type c: dict
         :param rel: relative index
@@ -377,18 +534,7 @@ class FeatureTemplate:
         """
         if 0 <= i + rel < len(data):
             try:
-                cnum = c[data[i + rel]['form']]
-            except KeyError:
-                cnum = None
-        else:
-            cnum = None
-        return 'cnum[%s]=%s' % (rel, cnum)
-
-    @staticmethod
-    def emb(data, i, rel=0, j=0, e=None, *args, **kwargs):
-        if 0 <= i + rel < len(data):
-            try:
-                emb = e[data[i + rel]['form']][j]
+                emb = e[data[i + rel][cols['form']]][j]
             except KeyError:
                 emb = None
         else:
@@ -396,87 +542,320 @@ class FeatureTemplate:
         return 'emb[%s][%s]=%s' % (rel, j, emb)
 
     @staticmethod
-    def isnum(data, i, rel=0, *args, **kwargs):
+    def isnum(data, i, cols, rel=0, *args, **kwargs):
+        """Generates a boolean context feature based on weather the value of
+        the `form` column is a number.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :return: feature
+        :rtype: str
+        """
         if 0 <= i + rel < len(data):
-            isnum = bool(re.match('[0-9/]+', data[i + rel]['form']))
+            isnum = bool(re.match('[0-9/]+', data[i + rel][cols['form']]))
         else:
             isnum = None
         return 'isnum[%s]=%s' % (str(rel), isnum)
 
     @staticmethod
-    def short(data, i, rel=0, p=2, *args, **kwargs):
+    def short(data, i, cols, rel=0, p=2, *args, **kwargs):
+        """Generates a context feature based on the length of the value the
+        `form` column. Positive if value is shorted than the provided threshold.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param p: threshold
+        :type p: int
+        :return: feature
+        :rtype: str
+        """
         shrt = None
         if 0 <= i + rel < len(data):
-            shrt = len(data[i + rel]['form']) < p
+            shrt = len(data[i + rel][cols['form']]) < p
         return 'short[%s]=%s' % (str(rel), shrt)
 
     @staticmethod
-    def long(data, i, rel=0, p=12, *args, **kwargs):
+    def long(data, i, cols, rel=0, p=12, *args, **kwargs):
+        """Generates a context feature based on the length of the value the
+        `form` column. Positive if value is longer than provided threshold.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param p: threshold
+        :type p: int
+        :return: feature
+        :rtype: str
+        """
         lng = None
         if 0 <= i + rel < len(data):
-            lng = len(data[i + rel]['form']) > p
+            lng = len(data[i + rel][cols['form']]) > p
         return 'long[%s]=%s' % (str(rel), lng)
 
     @staticmethod
-    def ln(data, i, rel=0, *args, **kwargs):
+    def ln(data, i, cols, rel=0, *args, **kwargs):
+        """Generates a context feature based on the length of the value the
+        `form` column.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :return: feature
+        :rtype: str
+        """
         ln = None
         if 0 <= i + rel < len(data):
-            ln = len(data[i + rel]['form'])
+            ln = len(data[i + rel][cols['form']])
         return 'ln[%s]=%s' % (str(rel), ln)
 
     @staticmethod
-    def suff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+    def suff(data, i, cols, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        """Generates a context feature based on the longest possible suffix of
+        the value in the `form` column. The suffix is only valid if present in
+        a list of suffixes.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param sfxs: suffixes
+        :type sfxs: set
+        :param max_sfx: max suffix length
+        :type max_sfx: int
+        :return: feature
+        :rtype: str
+        """
         sufx = None
         if 0 <= i + rel < len(data):
-            w = data[i + rel]['form']
+            w = data[i + rel][cols['form']]
             maxs = len(w) - 1
             if max_sfx and int(max_sfx) < maxs:
                 maxs = int(max_sfx)
+            # TODO turn this loop around for efficiency.
             for s in (w[-x:] for x in range(1, maxs + 1)):
                 if s in sfxs:
                     sufx = s  # longest possible suffix
         return 'sfx[%s]=%s' % (str(rel), sufx)
 
     @staticmethod
-    def pref(data, i, rel=0, prfxs=None, max_prfx=0, *args, **kwargs):
+    def pref(data, i, cols, rel=0, prfxs=None, max_prfx=0, *args, **kwargs):
+        """Generates a context feature based on the longest possible prefix of
+        the value in the `form` column. The prefix is only valid if present in
+        a list of prefixes.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param prfxs: prefixes
+        :type prfxs: set
+        :param max_prfx: max prefix length
+        :type max_prfx: int
+        :return: feature
+        :rtype: str
+        """
         prfx = None
         if 0 <= i + rel < len(data):
-            w = data[i + rel]['form']
+            w = data[i + rel][cols['form']]
             maxp = len(w)
             if max_prfx and int(max_prfx) < maxp:
                 maxp = int(max_prfx)
+            # TODO turn this loop around for efficiency.
             for s in (w[:x] for x in range(1, maxp + 1)):
                 if s in prfxs:
                     prfx = s  # longest possible suffix
         return 'sfx[%s]=%s' % (str(rel), prfx)
 
     @staticmethod
-    def medpref(data, i, rel=0, prfxs=None, max_prfx=0, *args, **kwargs):
-        return 'med%s' % FeatureTemplate.pref(data, i, rel, prfxs, max_prfx)
+    def medpref(data, i, cols, rel=0, prfxs=None, max_prfx=0, *args, **kwargs):
+        """Generates a context feature based on the longest possible prefix of
+        the value in the `form` column. The prefix is only valid if present in
+        a list of medical prefixes.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param prfxs: prefixes
+        :type prfxs: set
+        :param max_prfx: max prefix length
+        :type max_prfx: int
+        :return: feature
+        :rtype: str
+        """
+        return 'med%s' % FeatureTemplate.pref(data, i, cols, rel, prfxs, max_prfx)
 
     @staticmethod
-    def medsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
-        return 'med%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+    def medsuff(data, i, cols, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        """Generates a context feature based on the longest possible suffix of
+        the value in the `form` column. The suffix is only valid if present in
+        a list of suffixes.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param sfxs: suffixes
+        :type sfxs: set
+        :param max_sfx: max suffix length
+        :type max_sfx: int
+        :return: feature
+        :rtype: str
+        """
+        return 'med%s' % FeatureTemplate.suff(data, i, cols, rel, sfxs, max_sfx)
 
     @staticmethod
-    def nounsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
-        return 'noun%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+    def nounsuff(data, i, cols, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        """Generates a context feature based on the longest possible suffix of
+        the value in the `form` column. The suffix is only valid if present in
+        a list of suffixes.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param sfxs: suffixes
+        :type sfxs: set
+        :param max_sfx: max suffix length
+        :type max_sfx: int
+        :return: feature
+        :rtype: str
+        """
+        return 'noun%s' % FeatureTemplate.suff(data, i, cols, rel, sfxs, max_sfx)
 
     @staticmethod
-    def verbsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
-        return 'verb%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+    def verbsuff(data, i, cols, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        """Generates a context feature based on the longest possible suffix of
+        the value in the `form` column. The suffix is only valid if present in
+        a list of suffixes.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param sfxs: suffixes
+        :type sfxs: set
+        :param max_sfx: max suffix length
+        :type max_sfx: int
+        :return: feature
+        :rtype: str
+        """
+        return 'verb%s' % FeatureTemplate.suff(data, i, cols, rel, sfxs, max_sfx)
 
     @staticmethod
-    def adjsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
-        return 'adj%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+    def adjsuff(data, i, cols, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        """Generates a context feature based on the longest possible suffix of
+        the value in the `form` column. The suffix is only valid if present in
+        a list of suffixes.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param sfxs: suffixes
+        :type sfxs: set
+        :param max_sfx: max suffix length
+        :type max_sfx: int
+        :return: feature
+        :rtype: str
+        """
+        return 'adj%s' % FeatureTemplate.suff(data, i, cols, rel, sfxs, max_sfx)
 
     @staticmethod
-    def advsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
-        return 'adv%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+    def advsuff(data, i, cols, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        """Generates a context feature based on the longest possible suffix of
+        the value in the `form` column. The suffix is only valid if present in
+        a list of suffixes.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param sfxs: suffixes
+        :type sfxs: set
+        :param max_sfx: max suffix length
+        :type max_sfx: int
+        :return: feature
+        :rtype: str
+        """
+        return 'adv%s' % FeatureTemplate.suff(data, i, cols, rel, sfxs, max_sfx)
 
     @staticmethod
-    def inflsuff(data, i, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
-        return 'infl%s' % FeatureTemplate.suff(data, i, rel, sfxs, max_sfx)
+    def inflsuff(data, i, cols, rel=0, sfxs=None, max_sfx=0, *args, **kwargs):
+        """Generates a context feature based on the longest possible suffix of
+        the value in the `form` column. The suffix is only valid if present in
+        a list of suffixes.
+
+        :param data: data
+        :type: np.recarray
+        :param i: focus position
+        :type i: int
+        :param cols: column map
+        :type cols: dict
+        :param rel: relative position of context features
+        :type rel: int
+        :param sfxs: suffixes
+        :type sfxs: set
+        :param max_sfx: max suffix length
+        :type max_sfx: int
+        :return: feature
+        :rtype: str
+        """
+        return 'infl%s' % FeatureTemplate.suff(data, i, cols, rel, sfxs, max_sfx)
 
 
 def parse_range(r):

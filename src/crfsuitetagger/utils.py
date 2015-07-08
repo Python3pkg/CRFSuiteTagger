@@ -24,7 +24,7 @@ import ConfigParser
 import numpy as np
 
 
-def parse_tsv(fp=None, cols=None, ts='\t', s=None):
+def parse_tsv(fp=None, cols=None, ts='\t', s=None, inference_col='guesstag'):
     """Parses a file of TSV sequences separated by an empty line and produces
     a numpy recarray. The `cols` parameter can use a predefined set of field
     names or it can be user specific. The fields may be arbitrary in case new
@@ -46,6 +46,8 @@ def parse_tsv(fp=None, cols=None, ts='\t', s=None):
     :type ts: str
     :param s: TSV string
     :type s: str
+    :param inference_col: inference column name
+    :type inference_col: str
     :return: parsed data
     :rtype: np.array
     """
@@ -74,7 +76,7 @@ def parse_tsv(fp=None, cols=None, ts='\t', s=None):
 
     data = np.zeros(rc, dtype=dt)
 
-    names = c + ('guesstag', 'eos')
+    names = c + (inference_col, 'eos')
     data.dtype.names = names
 
     idx = 0

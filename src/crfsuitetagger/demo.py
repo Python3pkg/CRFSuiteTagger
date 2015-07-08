@@ -20,7 +20,10 @@ from utils import parse_tsv, export
 
 if __name__ == '__main__':
 
-    os.makedirs('tmp')
+    try:
+        os.makedirs('tmp')
+    except OSError:
+        pass
 
     # This will train and test a model as configured in a configuration file
     # logging.info('Training and testing a model as configured in
@@ -34,11 +37,11 @@ if __name__ == '__main__':
     print r
 
     # This model can be dumped in another place
-    c.dump_model('tmp/test_model')#
+    c.dump_model('tmp/test_model')
 
     # This loads a dumped model and uses it to chunk some POS-tagged text
     c = CRFSTagger(mp='tmp/test_model')
     data = parse_tsv('data/sample_chunks.txt', cols='pos', ts='\t')
-    d = c.tag(data=data, lc='guesstag', input_type='recarray', cols='chunk')
+    d = c.tag(data=data)
     export(d, open('tmp/chunk_output.txt', 'w'), cols='chunk')
     print d
