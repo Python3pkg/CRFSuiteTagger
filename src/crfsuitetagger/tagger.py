@@ -22,6 +22,8 @@ import pickle
 import readers
 import shutil
 import numpy as np
+import marshal
+import types
 
 from os import makedirs
 from os.path import dirname, expanduser
@@ -32,7 +34,8 @@ from pycrfsuite import Trainer, Tagger
 
 class CRFSTagger:
 
-    def __init__(self, cfg=None, mp=None, fnx=None, win_fnx=None, cols=None):
+    def __init__(self, cfg=None, mp=None, fnx=None, win_fnx=None, cols=None,
+                 verbose=False):
         """Creates an instance of CRFSTagger
 
         :param cfg: configuration
@@ -57,12 +60,18 @@ class CRFSTagger:
         # instance of pycrfsuite.Tagger
         self.tagger = None
 
+        self.verbose = verbose
+
         # attempt to import cannonical replacements
         try:
             import canonical
             self.canonical = canonical.REPLACEMENTS
         except ImportError:
             self.canonical = None
+
+        self.fnx = fnx
+        self.win_fnx = win_fnx
+        self.ft_tmpl_cols = cols
 
         # load data and resources if configuration is provided
         if cfg:
@@ -82,13 +91,17 @@ class CRFSTagger:
             self.cfg = m.cfg
             self.cfg.set('tagger', 'model', mp)
             self.resources = m.resources
-
-        assert self.cfg is not None, 'Configuration initialisation failed.' \
-                                     'Please, provide either a configuration ' \
-                                     'or a model.'
+            self.fnx = [self._load_function(n, f) for n, f in m.fnx.items()] if m.fnx else None
+            self.win_fnx = [self._load_function(n, f) for n, f in m.win_fnx] if m.win_fnx else None
+            self.ft_tmpl_cols = m.cols
+        else:
+            raise RuntimeError(
+                'Configuration initialisation failed. Please, provide either '
+                'a configuration or a model.'
+            )
 
         # parsing feature template
-        self.ft_tmpl = FeatureTemplate(fnx=fnx, win_fnx=win_fnx, cols=cols)
+        self.ft_tmpl = FeatureTemplate(fnx=self.fnx, win_fnx=self.win_fnx, cols=self.ft_tmpl_cols)
         self.ft_tmpl.parse_ftvec_templ(self.cfg_tag.get('ftvec'),
                                        self.resources)
 
@@ -161,10 +174,6 @@ class CRFSTagger:
         return getattr(eval, '%s' % self.cfg_tag['eval_func'])
 
     @property
-    def verbose(self):
-        return bool(self.cfg_tag.get('verbose', True))
-
-    @property
     def info(self):
         return self.tagger.info if self.tagger else None
 
@@ -200,6 +209,10 @@ class CRFSTagger:
                 cols=self.cols,
                 ts=self.ts
             )
+
+    def _load_function(self, name, code_string):
+        code = marshal.loads(code_string)
+        return types.FunctionType(code, globals(), name)
 
     def _extract_features(self, doc, form_col='form'):
         """A generator methof that extracts features from the data using a
@@ -465,6 +478,9 @@ class CRFSTagger:
         md = Model()
         md.cfg = clean_cfg(self.cfg)
         md.resources = self.resources
+        md.fnx = {f.__name__: marshal.dumps(f.func_code) for f in self.fnx} if self.fnx else None
+        md.win_fnx = {f.__name__: marshal.dumps(f.func_code) for f in self.win_fnx} if self.win_fnx else None
+        md.cols = self.ft_tmpl_cols
         fpx = expanduser(fp)
         try:
             makedirs(dirname(fpx))
@@ -490,3 +506,6 @@ class Model:
         self.crfs_model = None
         self.resources = {}
         self.cfg = None
+        self.fnx = None
+        self.win_fnx = None
+        self.cols = None

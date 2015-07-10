@@ -18,6 +18,8 @@ import os
 import time
 import StringIO
 import copy
+import crfsuitetagger.features as fts
+import crfsuitetagger.win_features as wf
 from unittest import TestCase
 
 from crfsuitetagger.ftex import *
@@ -26,6 +28,7 @@ from crfsuitetagger.eval import *
 
 
 class TestUtils(TestCase):
+
     def setUp(self):
         self.data_str = '''The\tD
 quick\tA
@@ -188,16 +191,22 @@ trap\tN
         self.dp = 'tmp/data.%s.tmp' % time.asctime()
         open(self.dp, 'w').write(self.data_str)
         self.data = parse_tsv(self.dp, ('form', 'postag'))
+        self.cols = {
+            'form': 'form',
+            'postag': 'postag',
+            'chunktag': 'chunktag',
+            'netag': 'netag'
+        }
 
     def tearDown(self):
         os.remove(self.dp)
 
     @staticmethod
-    def fakeres(data, i, rel=0, b=None, p=None, *args, **kwargs):
+    def fakeres(data, i, cols, rel=0, b=None, p=None, *args, **kwargs):
         if b is None and p is None:
             return 'fakeres'
         try:
-            v = b[data[i + rel]['form']][int(p)]
+            v = b[data[i + rel][cols['form']]][int(p)]
         except KeyError:
             v = None
         return 'fakeres[%s]=%s' % (rel, v)
@@ -211,7 +220,7 @@ trap\tN
     def test_parse_range(self):
         rr = [1, 2, 3, 10]
         rs = '1:3,10'
-        r = parse_range(rs)
+        r = wf.parse_range(rs)
         self.assertSequenceEqual(r, rr)
 
     def test_ftvec_templ(self):
@@ -242,12 +251,12 @@ trap\tN
             ftt.parse_ftvec_templ(ftvec, fr_dict)
             self.assertSequenceEqual(ftt.vec, ftt_real.vec)
 
-        ftt_real.fakeres(self.data, 0, *ftt_real.vec[-1][1:])
+        ftt_real.fnx['fakeres'](self.data, 0, self.cols, *ftt_real.vec[-1][1:])
 
     def test_ftt_constructor(self):
         ftt = FeatureTemplate(fnx=[self.fakeres], win_fnx=[self.winfakeres])
         self.assertEqual(ftt.vec, [])
-        self.assertIn(self.fakeres, ftt.__dict__.values())
+        self.assertIn(self.fakeres, ftt.fnx.values())
         self.assertIn(self.winfakeres, ftt.win_fnx.values())
 
     def test_make_features(self):
@@ -307,14 +316,14 @@ trap\tN
 
     def test_word(self):
         for i in [-4, -1, 0, 2]:
-            w = FeatureTemplate.word(self.data, 2, i)
+            w = fts.ft_word(self.data, 2, self.cols, i)
             rel = 2 + i
             rw = 'w[%s]=%s' % (i, self.data[rel][0] if rel >= 0 else None)
             self.assertEqual(w, rw)
 
     def test_pos(self):
         for i in [-4, -1, 0, 2]:
-            w = FeatureTemplate.pos(self.data, 2, i)
+            w = fts.ft_pos(self.data, 2, self.cols, i)
             rel = 2 + i
             rw = 'p[%s]=%s' % (i, self.data[rel][1] if rel >= 0 else None)
             self.assertEqual(w, rw)
@@ -323,14 +332,14 @@ trap\tN
         dtn = self.data.dtype.names
         self.data.dtype.names = (dtn[0], 'chunktag',) + dtn[2:]
         for i in [-4, -1, 0, 2]:
-            w = FeatureTemplate.chunk(self.data, 2, i)
+            w = fts.ft_chunk(self.data, 2, self.cols, i)
             rel = 2 + i
             rw = 'ch[%s]=%s' % (i, self.data[rel][1] if rel >= 0 else None)
             self.assertEqual(w, rw)
 
     def test_can(self):
         for i in [-4, -1, 0, 2]:
-            w = FeatureTemplate.can(self.data, 2, i)
+            w = fts.ft_can(self.data, 2, self.cols, i)
             r = 2 + i
             rwv = re.sub('.',
                          'x',
@@ -341,7 +350,7 @@ trap\tN
     def test_isnum(self):
         self.data[3][0] = '10'
         for i in [-4, -1, 0, 2]:
-            w = FeatureTemplate.isnum(self.data, 2, i)
+            w = fts.ft_isnum(self.data, 2, self.cols, i)
             r = 2 + i
             rwv = i == 3 if len(self.data) > r >= 0 else None
             rw = 'isnum[%s]=%s' % (i, rwv)
@@ -352,7 +361,7 @@ trap\tN
         i = 2
         for rel in [-4, -1, 0, 2]:
             for j in [4, 6, 8]:
-                w = FeatureTemplate.emb(self.data, i, rel, j, e)
+                w = fts.ft_emb(self.data, i, self.cols, rel, j, e)
                 r = i + rel
                 v = None
                 if len(self.data) > r >= 0:
@@ -364,7 +373,7 @@ trap\tN
         c = {'fox': 1, 'quick': 2}
         i = 2
         for rel in [-4, -1, 0, 2]:
-            w = FeatureTemplate.cls(self.data, i, rel, c)
+            w = fts.ft_cls(self.data, i, self.cols, rel, c)
             r = i + rel
             v = None
             if len(self.data) > r >= 0:
@@ -377,7 +386,7 @@ trap\tN
         i = 2
         p = 10
         for rel in [-4, -1, 0, 2]:
-            w = FeatureTemplate.brown(self.data, i, rel, b, p)
+            w = fts.ft_brown(self.data, i, self.cols, rel, b, p)
             r = i + rel
             v = None
             if len(self.data) > r >= 0:
@@ -392,7 +401,7 @@ trap\tN
         i = 2
         p = 5
         for rel in [-4, -1, 0, 2]:
-            w = FeatureTemplate.suff(self.data, i, rel, b, p)
+            w = fts.ft_suff(self.data, i, self.cols, rel, b, p)
             r = i + rel
             v = None
             if len(self.data) > r >= 0:
@@ -408,7 +417,7 @@ trap\tN
         i = 2
         p = 5
         for rel in [-4, -1, 0, 2]:
-            w = FeatureTemplate.pref(self.data, i, rel, b, p)
+            w = fts.ft_pref(self.data, i, self.cols, rel, b, p)
             r = i + rel
             v = None
             if len(self.data) > r >= 0:
@@ -420,43 +429,43 @@ trap\tN
             self.assertEqual(w, rw)
 
     def test_nrange(self):
-        rng = nrange(0, 10, 3)
+        rng = wf.nrange(0, 10, 3)
         self.assertSequenceEqual(rng, range(0, 9, 1))
-        rng = nrange(0, 11, 3)
+        rng = wf.nrange(0, 11, 3)
         self.assertSequenceEqual(rng, range(0, 10, 1))
-        rng = nrange(0, 12, 3)
+        rng = wf.nrange(0, 12, 3)
         self.assertSequenceEqual(rng, range(0, 11, 1))
-        rng = nrange(0, 13, 1)
+        rng = wf.nrange(0, 13, 1)
         self.assertSequenceEqual(rng, range(0, 14, 1))
-        rng = nrange(0, 14, 2)
+        rng = wf.nrange(0, 14, 2)
         self.assertSequenceEqual(rng, range(0, 14, 1))
 
     def test_parse_ng_range(self):
-        nrng = parse_ng_range(range(10), 3)
+        nrng = wf.parse_ng_range(range(10), 3)
         self.assertSequenceEqual(nrng, range(8))
-        nrng = parse_ng_range(range(10) + range(12, 15), 3)
+        nrng = wf.parse_ng_range(range(10) + range(12, 15), 3)
         self.assertSequenceEqual(nrng, range(8) + range(12, 15, 3))
-        nrng = parse_ng_range(range(10) + range(12, 16) + range(20, 22), 2)
+        nrng = wf.parse_ng_range(range(10) + range(12, 16) + range(20, 22), 2)
         self.assertSequenceEqual(nrng, range(9) + range(12, 15) + range(20, 21))
 
     def test_nword(self):
-        ft = FeatureTemplate.nword(self.data[:8], 3, 2, 2)
+        ft = fts.ft_nword(self.data[:8], 3, self.cols, 2, 2)
         self.assertEqual(ft, '2w[2]=theriver')
-        ft = FeatureTemplate.nword(self.data[:8], 5, 2, 2)
+        ft = fts.ft_nword(self.data[:8], 5, self.cols, 2, 2)
         self.assertEqual(ft, '2w[2]=None')
-        ft = FeatureTemplate.nword(self.data[:8], 5, -1, 2)
+        ft = fts.ft_nword(self.data[:8], 5, self.cols, -1, 2)
         self.assertEqual(ft, '2w[-1]=acrossthe')
-        ft = FeatureTemplate.nword(self.data[:8], 1, -2, 3)
+        ft = fts.ft_nword(self.data[:8], 1, self.cols, -2, 3)
         self.assertEqual(ft, '3w[-2]=None')
 
     def test_npos(self):
-        ft = FeatureTemplate.npos(self.data[:8], 3, 2, 2)
+        ft = fts.ft_npos(self.data[:8], 3, self.cols, 2, 2)
         self.assertEqual(ft, '2p[2]=DN')
-        ft = FeatureTemplate.npos(self.data[:8], 5, 2, 2)
+        ft = fts.ft_npos(self.data[:8], 5, self.cols, 2, 2)
         self.assertEqual(ft, '2p[2]=None')
-        ft = FeatureTemplate.npos(self.data[:8], 5, -1, 2)
+        ft = fts.ft_npos(self.data[:8], 5, self.cols, -1, 2)
         self.assertEqual(ft, '2p[-1]=RD')
-        ft = FeatureTemplate.npos(self.data[:8], 1, -2, 3)
+        ft = fts.ft_npos(self.data[:8], 1, self.cols, -2, 3)
         self.assertEqual(ft, '3p[-2]=None')
 
 
@@ -483,12 +492,31 @@ class TestEval(TestCase):
         for x in range(10):
             data[x] = ('bla', 'N', 'B-NP' if x % 2 else 'B-VP',
                        'B-NP' if x % 2 else 'B-VP', 9 if x == 0 else -1)
-        data[0]['guesstag'] = 'B-NP'
-        data[0]['guesstag'] = 'I-NP'
+        data[2]['guesstag'] = 'B-NP'
+        data[2]['guesstag'] = 'I-NP'
         r = conll(data)
-        self.assertAlmostEqual(float(r['Total']['fscore']), 90.0)
+        self.assertAlmostEqual(float(r['Total']['fscore']), 84.21)
         self.assertAlmostEqual(float(r['VP']['fscore']), 88.89)
-        self.assertAlmostEqual(float(r['NP']['fscore']), 90.91)
+        self.assertAlmostEqual(float(r['NP']['fscore']), 80.00)
+
+    def test_bio(self):
+        """This tests BIO evaluation and compares it to output of CoNLL-2000
+        script.
+
+
+        """
+        dt = 'a10,a10,a10,a10,int32'
+        data = np.zeros(10, dtype=dt)
+        data.dtype.names = ['form', 'postag', 'chunktag', 'guesstag', 'eos']
+        for x in range(10):
+            data[x] = ('bla', 'N', 'B-NP' if x % 2 else 'B-VP',
+                       'B-NP' if x % 2 else 'B-VP', 9 if x == 0 else -1)
+        data[2]['guesstag'] = 'B-NP'
+        data[2]['guesstag'] = 'I-NP'
+        r = bio(data)
+        self.assertAlmostEqual(float(r['Total']['fscore']), 84.21)
+        self.assertAlmostEqual(float(r['Total']['precision']), 88.89)
+        self.assertAlmostEqual(float(r['Total']['recall']), 80.00)
 
 
 class TestTagger(TestCase):

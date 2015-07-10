@@ -11,5 +11,6 @@ setup(name='CRFSuiteTagger',
       author_email='aleksandar@savkov.eu',
       url='https://github.com/savkov/CRFSuiteTagger',
       package_dir={'': 'src'},
-      packages=['crfsuitetagger']
+      packages=['crfsuitetagger'],
+      install_requires=['numpy', 'bioeval', 'pycrfsuite']
      )
