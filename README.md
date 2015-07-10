@@ -21,8 +21,6 @@ You will need the following Python packages and one of my other libraries:
 * [numpy](http://www.numpy.org/ "NumPy") - you should it
 * [bioeval](https://github.com/savkov/bioeval "bioeval") - my library for evaluating BIO style annotation, which replaces the perl script from [CoNLL-2000](http://ilk.uvt.nl/team/sabine/chunklink/chunklink_2-2-2000_for_conll.pl)
 
-ftv=word:[-1:1];pos:[-1:0];npos[-2:1],2;cls:[0]
-
 ### TODO
 
 * command line interface
