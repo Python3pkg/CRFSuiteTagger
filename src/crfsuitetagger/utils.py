@@ -174,7 +174,9 @@ def gsequences(data, cols=None):
     """
     # column templates
     ct = {'pos': ['form', 'postag', 'guesstag'],
-                 'chunk': ['form', 'postag', 'chunktag', 'guesstag']}
+          'chunk': ['form', 'postag', 'chunktag', 'guesstag'],
+          'ne': ['form', 'postag', 'chunktag', 'netag', 'guesstag']
+    }
 
     # all columns in the data
     dt = data.dtype.names
