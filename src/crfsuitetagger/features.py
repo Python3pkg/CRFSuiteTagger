@@ -56,9 +56,9 @@ def ft_nword(data, i, cols, rel=0, n=2, *args, **kwargs):
     :return: feature
     :rtype: str
     """
-    if 0 <= i + rel and i + rel + n - 1 < len(data):
+    if 0 <= i + rel and i + rel + int(n) - 1 < len(data):
         s = i + rel
-        e = i + rel + n
+        e = i + rel + int(n)
         forms = ''.join([data[x][cols['form']] for x in range(s, e)])
     else:
         forms = None
@@ -102,9 +102,9 @@ def ft_npos(data, i, cols, rel=0, n=2, *args, **kwargs):
     :return: feature
     :rtype: str
     """
-    if 0 <= i + rel and i + rel + n - 1 < len(data):
+    if 0 <= i + rel and i + rel + int(n) - 1 < len(data):
         s = i + rel
-        e = i + rel + n
+        e = i + rel + int(n)
         postags = ''.join([data[x][cols['postag']] for x in range(s, e)])
     else:
         postags = None
