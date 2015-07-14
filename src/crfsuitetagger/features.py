@@ -284,6 +284,33 @@ def ft_emb(data, i, cols, rel=0, j=0, e=None, *args, **kwargs):
     return 'emb[%s][%s]=%s' % (rel, j, emb)
 
 
+def ft_lex(data, i, cols, rel=0, lex=None, *args, **kwargs):
+    """Generates binary features based on the presence of a word form in a
+    dictionary resource (lexicon).
+
+    :param data: data
+    :type data: DataFrame
+    :param i: index
+    :type i: int
+    :param cols: column map
+    :type cols: dict
+    :param rel: relative index
+    :type rel: int
+    :param lex: lexicon
+    :type lex: set or list
+    :return: feature string
+    :rtype: str
+    """
+    lex_ft = False
+    if 0 <= i + rel < len(data):
+        try:
+            lex_ft = data[i + rel][cols['form']] in lex
+        except KeyError:
+            pass
+
+    return 'lex[%s]=%s' % (rel, lex_ft)
+
+
 def ft_isnum(data, i, cols, rel=0, *args, **kwargs):
     """Generates a boolean context feature based on weather the value of
     the `form` column is a number.

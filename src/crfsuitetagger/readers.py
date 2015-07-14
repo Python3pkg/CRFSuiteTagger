@@ -49,6 +49,11 @@ def read_brown(bp):
     return {x[1]: x[0] for x in r}
 
 
+def read_lex(lp):
+    with open(lp, 'r') as fh:
+        return set([l.strip() for l in fh])
+
+
 def _read_afixes(ap):
     return set(open(ap, 'r').read().split('\n'))
 
