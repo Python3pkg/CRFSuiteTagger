@@ -40,7 +40,7 @@ def ft_word(data, i, cols, rel=0, *args, **kwargs):
     return 'w[%s]=%s' % (rel, form)
 
 
-def ft_nword(data, i, cols, rel=0, n=None, *args, **kwargs):
+def ft_nword(data, i, cols, rel=0, n=2, *args, **kwargs):
     """Generates a n-gram context feature based on the `form` column.
 
     :param data: data
