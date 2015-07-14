@@ -108,7 +108,7 @@ class AccuracyResults(dict):
         return self.__str__()
 
 
-def bio(data, label_col='chunktag', inference_col='guesstag'):
+def bio(data, label_col='chunktag', inference_col='guesstag', *args, **kwargs):
     """Calculates precision, recall and f1 score for BIO and BEISO annotation.
     This is a faster python-only alternative to the `conll` method.
 
@@ -159,7 +159,8 @@ def bio(data, label_col='chunktag', inference_col='guesstag'):
     return r
 
 
-def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
+def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag'),
+          *args, **kwargs):
     """Evaluates chunking f1-score provided with data with the following fields:
     form, postag, chunktag, guesstag
 
@@ -228,7 +229,7 @@ def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag')):
         return r
 
 
-def pos(data):
+def pos(data, *args, **kwargs):
     """Estimates POS tagging accuracy based on the `postag` and `guesstag`
     fields in `data`.
 

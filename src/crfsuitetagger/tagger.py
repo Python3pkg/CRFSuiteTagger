@@ -458,7 +458,8 @@ class CRFSTagger:
                      cols=cols, ts=ts)
 
         # evaluating
-        r = getattr(eval, eval_func) if eval_func else self.eval_func(d)
+        f = eval_func if eval_func else self.eval_func
+        r = f(d, label_col=self.lbl_col, inference_col=self.ilbl_col)
 
         # returnning AccuracyResults and np.recarray tagged data
         return r, d
