@@ -42,6 +42,14 @@ class CRFSTagger:
         :type cfg: ConfigParser.ConfigParser
         :param mp: model path
         :type mp: str
+        :param fnx: additional feature extraction functions
+        :type fnx: list
+        :param win_fnx: additional window feature extraction functions
+        :type win_fnx: list
+        :param cols: map of columns names
+        :type cols: dict
+        :param verbose: enables verbose mode
+        :type verbose: bool
         """
 
         # configuration
@@ -91,8 +99,10 @@ class CRFSTagger:
             self.cfg = m.cfg
             self.cfg.set('tagger', 'model', mp)
             self.resources = m.resources
-            self.fnx = [self._load_function(n, f) for n, f in m.fnx.items()] if m.fnx else None
-            self.win_fnx = [self._load_function(n, f) for n, f in m.win_fnx] if m.win_fnx else None
+            self.fnx = [self._load_function(n, f) for n, f in m.fnx.items()] \
+                if m.fnx else None
+            self.win_fnx = [self._load_function(n, f) for n, f in m.win_fnx] \
+                if m.win_fnx else None
             self.ft_tmpl_cols = m.cols
         else:
             raise RuntimeError(
@@ -101,7 +111,8 @@ class CRFSTagger:
             )
 
         # parsing feature template
-        self.ft_tmpl = FeatureTemplate(fnx=self.fnx, win_fnx=self.win_fnx, cols=self.ft_tmpl_cols)
+        self.ft_tmpl = FeatureTemplate(fnx=self.fnx, win_fnx=self.win_fnx,
+                                       cols=self.ft_tmpl_cols)
         self.ft_tmpl.parse_ftvec_templ(self.cfg_tag.get('ftvec'),
                                        self.resources)
 
@@ -479,8 +490,10 @@ class CRFSTagger:
         md = Model()
         md.cfg = clean_cfg(self.cfg)
         md.resources = self.resources
-        md.fnx = {f.__name__: marshal.dumps(f.func_code) for f in self.fnx} if self.fnx else None
-        md.win_fnx = {f.__name__: marshal.dumps(f.func_code) for f in self.win_fnx} if self.win_fnx else None
+        md.fnx = {f.__name__: marshal.dumps(f.func_code) for f in self.fnx} \
+            if self.fnx else None
+        md.win_fnx = {f.__name__: marshal.dumps(f.func_code) for f in
+                      self.win_fnx} if self.win_fnx else None
         md.cols = self.ft_tmpl_cols
         fpx = expanduser(fp)
         try:
