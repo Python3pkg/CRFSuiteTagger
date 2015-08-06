@@ -377,8 +377,8 @@ class CRFSTagger:
             self.dump_model(self.model_path)
             pickle.dump(self.cfg, open('%s.cfg.pcl' % self.model_path, 'w'))
 
-    def tag(self, data, form_col=None, ilbl_col=None, tagger=None, cols=None,
-            ts=None):
+    def tag(self, data, form_col=None, ilbl_col=None, tagger=None,
+            data_cols=None, ts=None):
         """Tags TSV/CSV or np.recarray data using the loaded CRFSuite model.
 
         See documentation for `train` for more details on requirements for the
@@ -392,8 +392,8 @@ class CRFSTagger:
         :type ilbl_col: str
         :param tagger: CRFS tagger
         :type tagger: Tagger
-        :param cols: TSV column names
-        :type cols: str or list of str
+        :param data_cols: TSV column names
+        :data_cols cols: str or list of str
         :param ts: tab separator for TSV
         :type ts: str
         :return: tagged data
@@ -401,7 +401,7 @@ class CRFSTagger:
         """
 
         fc = form_col if form_col else self.form_col
-        c = cols if cols else self.cols
+        c = data_cols if data_cols else self.cols
         sep = ts if ts else self.ts
         ilc = ilbl_col if ilbl_col else self.ilbl_col
 
@@ -433,7 +433,7 @@ class CRFSTagger:
         return d
 
     def test(self, data=None, form_col=None, ilbl_col=None, tagger=None,
-             cols=None, ts=None, eval_func=None):
+             data_cols=None, ts=None, eval_func=None):
         """Tags TSV/CSV or np.recarray data using the loaded CRFSuite model and
         evaluates the results.
 
@@ -448,8 +448,8 @@ class CRFSTagger:
         :type ilbl_col: str
         :param tagger: CRFS tagger
         :type tagger: Tagger
-        :param cols: TSV column names
-        :type cols: str or list of str
+        :param data_cols: TSV column names
+        :data_cols cols: str or list of str
         :param ts: tab separator for TSV
         :type ts: str
         :param eval_func: evaluation function name [pos, conll, bio]
@@ -466,7 +466,7 @@ class CRFSTagger:
 
         # tagging
         d = self.tag(d, form_col=form_col, ilbl_col=ilbl_col, tagger=tagger,
-                     cols=cols, ts=ts)
+                     data_cols=data_cols, ts=ts)
 
         # evaluating
         f = eval_func if eval_func else self.eval_func
