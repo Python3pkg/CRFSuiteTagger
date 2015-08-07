@@ -311,6 +311,38 @@ def ft_lex(data, i, cols, rel=0, lex=None, *args, **kwargs):
     return 'lex[%s]=%s' % (rel, lex_ft)
 
 
+def ft_nem(data, i, cols, rel=0, *args, **kwargs):
+
+    nem_ft = None
+    if 0 <= i + rel < len(data):
+        try:
+            nem_ft = data[i + rel][cols['nemeta']]
+        except KeyError:
+            pass
+    return 'nem[%s]=%s' % (rel, nem_ft)
+
+
+def ft_nsuff(data, i, cols, rel=0, n=3, *args, **kwargs):
+    nsuff_ft = None
+    if 0 <= i + rel < len(data):
+        try:
+            nsuff_ft = data[i + rel][cols['form']][-int(n):]
+        except KeyError:
+            pass
+    return 'nsuff[%s],%s=%s' % (rel, n, nsuff_ft)
+
+
+def ft_npref(data, i, cols, rel=0, n=3, *args, **kwargs):
+    npref_ft = None
+    if 0 <= i + rel < len(data):
+        try:
+            npref_ft = data[i + rel][cols['form']][:-int(n)]
+        except KeyError:
+            pass
+    return 'npref[%s],%s=%s' % (rel, n, npref_ft)
+
+
+
 def ft_isnum(data, i, cols, rel=0, *args, **kwargs):
     """Generates a boolean context feature based on weather the value of
     the `form` column is a number.
