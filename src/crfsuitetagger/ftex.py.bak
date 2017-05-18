@@ -15,8 +15,8 @@
 __author__ = 'Aleksandar Savkov'
 
 import re
-from . import features as fts
-from . import win_features as wf
+import features as fts
+import win_features as wf
 
 
 class FeatureTemplate:
@@ -62,14 +62,14 @@ class FeatureTemplate:
 
         # grouping feature functions
         self.fnx = {
-            x[3:]: y for x, y in list(fts.__dict__.items()) if x[:3] == 'ft_'
+            x[3:]: y for x, y in fts.__dict__.items() if x[:3] == 'ft_'
         }
         if fnx:
             self.fnx.update({f.__name__: f for f in fnx})
 
         # grouping window feature functions
         self.win_fnx = {
-            x[3:-4]: y for x, y in list(wf.__dict__.items()) if x[:3] == 'ft_'
+            x[3:-4]: y for x, y in wf.__dict__.items() if x[:3] == 'ft_'
         }
         if win_fnx:
             self.win_fnx.update({x.__name__: x for x in win_fnx})
@@ -129,7 +129,7 @@ class FeatureTemplate:
             fp = []
 
             # adding resources to the parameters if required
-            if fn in list(r.keys()):
+            if fn in r.keys():
                 fp.append(r[fn])
 
             # adding function parameters if specified
@@ -169,7 +169,7 @@ class FeatureTemplate:
         """
         wfn = fn if type(fn) is str else fn.__name__
         wfnx = self.win_fnx
-        f = wfnx[wfn] if wfn in list(wfnx.keys()) else wf.ft_generic_win
+        f = wfnx[wfn] if wfn in wfnx.keys() else wf.ft_generic_win
         for v in f(fn, fw, fp, *args, **kwargs):
             self.vec.append(v)
 

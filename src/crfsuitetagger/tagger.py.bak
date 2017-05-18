@@ -17,9 +17,9 @@ __author__ = 'Aleksandar Savkov'
 
 import re
 import copy
-from . import eval
+import eval
 import pickle
-from . import readers
+import readers
 import shutil
 import numpy as np
 import marshal
@@ -27,8 +27,8 @@ import types
 
 from os import makedirs
 from os.path import dirname, expanduser
-from .ftex import FeatureTemplate
-from .utils import parse_tsv, gsequences, expandpaths, clean_cfg
+from ftex import FeatureTemplate
+from utils import parse_tsv, gsequences, expandpaths, clean_cfg
 from pycrfsuite import Trainer, Tagger
 
 
@@ -64,7 +64,7 @@ class CRFSTagger:
 
         # attempt to import cannonical replacements
         try:
-            from . import canonical
+            import canonical
             self.canonical = canonical.REPLACEMENTS
         except ImportError:
             self.canonical = None
@@ -91,7 +91,7 @@ class CRFSTagger:
             self.cfg = m.cfg
             self.cfg.set('tagger', 'model', mp)
             self.resources = m.resources
-            self.fnx = [self._load_function(n, f) for n, f in list(m.fnx.items())] if m.fnx else None
+            self.fnx = [self._load_function(n, f) for n, f in m.fnx.items()] if m.fnx else None
             self.win_fnx = [self._load_function(n, f) for n, f in m.win_fnx] if m.win_fnx else None
             self.ft_tmpl_cols = m.cols
         else:
@@ -189,7 +189,7 @@ class CRFSTagger:
         parameter and returns a resource data structure.
         """
         self.resources = {}
-        for n, p in list(self.cfg_res.items()):
+        for n, p in self.cfg_res.items():
             self.resources[n] = getattr(readers, 'read_%s' % n)(p)
 
     def _load_data(self):
@@ -227,7 +227,7 @@ class CRFSTagger:
         # replace tokens with canonical forms
         if self.canonical:
             for t in d:
-                for r in list(self.canonical.keys()):
+                for r in self.canonical.keys():
                     if re.match(r, t['form']):
                         t['form'] = self.canonical[r]
 
@@ -479,8 +479,8 @@ class CRFSTagger:
         md = Model()
         md.cfg = clean_cfg(self.cfg)
         md.resources = self.resources
-        md.fnx = {f.__name__: marshal.dumps(f.__code__) for f in self.fnx} if self.fnx else None
-        md.win_fnx = {f.__name__: marshal.dumps(f.__code__) for f in self.win_fnx} if self.win_fnx else None
+        md.fnx = {f.__name__: marshal.dumps(f.func_code) for f in self.fnx} if self.fnx else None
+        md.win_fnx = {f.__name__: marshal.dumps(f.func_code) for f in self.win_fnx} if self.win_fnx else None
         md.cols = self.ft_tmpl_cols
         fpx = expanduser(fp)
         try:

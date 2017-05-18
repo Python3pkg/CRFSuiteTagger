@@ -18,14 +18,14 @@ import os
 import re
 import sys
 import time
-import io
+import StringIO
 import traceback
 import random as rnd
 import warnings
 
 from os.path import join
 from bioeval import evaluate
-from .utils import export, random_str
+from utils import export, random_str
 from iterpipes import check_call, cmd
 from subprocess import CalledProcessError
 
@@ -91,7 +91,7 @@ class AccuracyResults(dict):
 
     def _to_str(self, fh):
         fh.write('--------------------------------------------------------\n')
-        for k in list(self.keys()):
+        for k in self.keys():
             if k == self._total_name:
                 continue
             fh.write(self._pack_str(k))
@@ -100,7 +100,7 @@ class AccuracyResults(dict):
         fh.write('--------------------------------------------------------\n')
 
     def __str__(self):
-        rf = io.StringIO()
+        rf = StringIO.StringIO()
         self._to_str(rf)
         return rf.getvalue()
 
@@ -212,11 +212,11 @@ def conll(data, cols=('form', 'postag', 'chunktag', 'guesstag'),
         r.parse_conll_eval_table(fp_res)
     except CalledProcessError:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        print("*** print_tb:")
+        print "*** print_tb:"
         traceback.print_tb(exc_traceback,
                            limit=1,
                            file=sys.stdout)
-        print("*** print_exception:")
+        print "*** print_exception:"
         traceback.print_exception(exc_type,
                                   exc_value,
                                   exc_traceback,
@@ -239,7 +239,7 @@ def pos(data, *args, **kwargs):
     cc = {}  # correct count
     ac = {}  # all count
     for it in data:
-        if it['postag'] not in list(ac.keys()):
+        if it['postag'] not in ac.keys():
             ac[it['postag']] = 0.0
             cc[it['postag']] = 0.0
         if it['postag'] == it['guesstag']:
@@ -251,7 +251,7 @@ def pos(data, *args, **kwargs):
 
     results = AccuracyResults()
 
-    for t in list(ac.keys()):
+    for t in ac.keys():
         results[t] = {'accuracy': cc[t] / ac[t], 'correct': cc[t], 'all': ac[t]}
         tcc += cc[t]
         tac += ac[t]

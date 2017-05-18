@@ -17,10 +17,10 @@ __author__ = 'Aleksandar Savkov'
 import re
 import copy
 import os.path
-import io
+import StringIO
 import random
 import string
-import configparser
+import ConfigParser
 import numpy as np
 
 
@@ -60,7 +60,7 @@ def parse_tsv(fp=None, cols=None, ts='\t', s=None, inference_col='guesstag'):
     c = ct[cols] if type(cols) is str else cols
 
     if s is not None:
-        stream = io.StringIO()
+        stream = StringIO.StringIO()
         stream.write(s)
         stream.seek(0)
     elif fp is not None:
@@ -146,7 +146,7 @@ def export(data, f, cols=None, ts='\t'):
     rc = len(data)
     d = data[c]
     eos = None
-    for i in range(rc):
+    for i in xrange(rc):
         # index of the beginning of the next sequence
         eos = data[i]['eos'] if data[i]['eos'] > 0 else eos
 
@@ -368,8 +368,8 @@ def copycfg(cfg):
     :return: copy of ConfigParser object
     :rtype: ConfigParser.ConfigParser
     """
-    c = configparser.ConfigParser()
-    buff = io.StringIO()
+    c = ConfigParser.ConfigParser()
+    buff = StringIO.StringIO()
     cfg.write(buff)
     buff.seek(0)
     c.readfp(buff)

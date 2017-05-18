@@ -132,7 +132,7 @@ def ft_emb_win(fn, fw, fp, *args, **kwargs):
         vc = parse_range(fp[1][1:-1])
     else:
         # assume iteration over the whole vector
-        vc = list(range(len(e[list(e.keys())[0]])))
+        vc = range(len(e[e.keys()[0]]))
 
     for i in fw:
         for j in vc:

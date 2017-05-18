@@ -16,7 +16,7 @@ __author__ = 'Aleksandar Savkov'
 
 import os
 import time
-import io
+import StringIO
 import copy
 import crfsuitetagger.features as fts
 import crfsuitetagger.win_features as wf
@@ -81,7 +81,7 @@ trap\tN
         os.remove(fp)
 
     def test_export(self):
-        ex = io.StringIO()
+        ex = StringIO.StringIO()
         export(self.data, ex, cols=['form', 'postag'])
         self.assertEqual(ex.getvalue().strip(), self.data_str)
 
@@ -225,7 +225,7 @@ trap\tN
 
     def test_ftvec_templ(self):
 
-        fr = {'fox': list(range(10)), 'wolf': list(range(10))}
+        fr = {'fox': range(10), 'wolf': range(10)}
         fr_dict = {'fakeres': fr}
 
         ftt_real = FeatureTemplate(fnx=[self.fakeres])
@@ -256,13 +256,13 @@ trap\tN
     def test_ftt_constructor(self):
         ftt = FeatureTemplate(fnx=[self.fakeres], win_fnx=[self.winfakeres])
         self.assertEqual(ftt.vec, [])
-        self.assertIn(self.fakeres, list(ftt.fnx.values()))
-        self.assertIn(self.winfakeres, list(ftt.win_fnx.values()))
+        self.assertIn(self.fakeres, ftt.fnx.values())
+        self.assertIn(self.winfakeres, ftt.win_fnx.values())
 
     def test_make_features(self):
         ftt = FeatureTemplate(fnx=[self.fakeres])
 
-        fr = {'fox': list(range(10)), 'wolf': list(range(10))}
+        fr = {'fox': range(10), 'wolf': range(10)}
 
         ftt.add_win_features('word', [-3, -2, 4], ())
         ftt.add_win_features('pos', [-2, 0], ())
@@ -357,7 +357,7 @@ trap\tN
             self.assertEqual(w, rw)
 
     def test_emb(self):
-        e = {'fox': list(range(100)), 'quick': list(reversed(list(range(100))))}
+        e = {'fox': range(100), 'quick': list(reversed(range(100)))}
         i = 2
         for rel in [-4, -1, 0, 2]:
             for j in [4, 6, 8]:
@@ -430,23 +430,23 @@ trap\tN
 
     def test_nrange(self):
         rng = wf.nrange(0, 10, 3)
-        self.assertSequenceEqual(rng, list(range(0, 9, 1)))
+        self.assertSequenceEqual(rng, range(0, 9, 1))
         rng = wf.nrange(0, 11, 3)
-        self.assertSequenceEqual(rng, list(range(0, 10, 1)))
+        self.assertSequenceEqual(rng, range(0, 10, 1))
         rng = wf.nrange(0, 12, 3)
-        self.assertSequenceEqual(rng, list(range(0, 11, 1)))
+        self.assertSequenceEqual(rng, range(0, 11, 1))
         rng = wf.nrange(0, 13, 1)
-        self.assertSequenceEqual(rng, list(range(0, 14, 1)))
+        self.assertSequenceEqual(rng, range(0, 14, 1))
         rng = wf.nrange(0, 14, 2)
-        self.assertSequenceEqual(rng, list(range(0, 14, 1)))
+        self.assertSequenceEqual(rng, range(0, 14, 1))
 
     def test_parse_ng_range(self):
-        nrng = wf.parse_ng_range(list(range(10)), 3)
-        self.assertSequenceEqual(nrng, list(range(8)))
-        nrng = wf.parse_ng_range(list(range(10)) + list(range(12, 15)), 3)
-        self.assertSequenceEqual(nrng, list(range(8)) + list(range(12, 15, 3)))
-        nrng = wf.parse_ng_range(list(range(10)) + list(range(12, 16)) + list(range(20, 22)), 2)
-        self.assertSequenceEqual(nrng, list(range(9)) + list(range(12, 15)) + list(range(20, 21)))
+        nrng = wf.parse_ng_range(range(10), 3)
+        self.assertSequenceEqual(nrng, range(8))
+        nrng = wf.parse_ng_range(range(10) + range(12, 15), 3)
+        self.assertSequenceEqual(nrng, range(8) + range(12, 15, 3))
+        nrng = wf.parse_ng_range(range(10) + range(12, 16) + range(20, 22), 2)
+        self.assertSequenceEqual(nrng, range(9) + range(12, 15) + range(20, 21))
 
     def test_nword(self):
         ft = fts.ft_nword(self.data[:8], 3, self.cols, 2, 2)
